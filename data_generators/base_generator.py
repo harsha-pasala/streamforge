@@ -33,6 +33,27 @@ class BaseGenerator(ABC):
         timestamp = datetime.now().strftime("%Y%m%d_%H%M%S")
         return os.path.join(table_dir, f"data_{timestamp}.csv")
     
+    def _check_directory_empty(self, directory):
+        """Check if directory is empty in both local and Databricks environments."""
+        if self._is_local_env():
+            # Local environment check
+            if os.path.exists(directory):
+                if os.listdir(directory):
+                    raise ValueError(f"Directory {directory} is not empty. Please clear the directory before generating new data.")
+        else:
+            # Databricks environment check
+            from databricks.sdk import WorkspaceClient
+            workspace = WorkspaceClient()
+            try:
+                # List files in the directory
+                files = workspace.files.list(directory)
+                if files and len(files) > 0:
+                    raise ValueError(f"Directory {directory} is not empty. Please clear the directory before generating new data.")
+            except Exception as e:
+                # If directory doesn't exist, that's fine - it will be created
+                if "does not exist" not in str(e):
+                    raise e
+    
     def _save_to_databricks(self, df, output_path):
         """Save data to Databricks UC volume using SDK."""
         from databricks.sdk import WorkspaceClient
@@ -55,10 +76,11 @@ class BaseGenerator(ABC):
     def save_data(self, df, table_name):
         """Save generated data to CSV file."""
         output_path = self._get_output_path(table_name)
+        output_dir = os.path.dirname(output_path)
         
         if self._is_local_env():
             # Local development: create directory and save directly
-            os.makedirs(os.path.dirname(output_path), exist_ok=True)
+            os.makedirs(output_dir, exist_ok=True)
             df.to_csv(output_path, index=False)
         else:
             # Databricks deployment: use SDK to write to UC volume

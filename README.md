@@ -1,175 +1,164 @@
 # DLT StreamForge
 
-A Python-based data generation project for Databricks Apps that creates realistic, referentially intact test data from YAML schema definitions. The platform also generates Delta Live Tables (DLT) pipeline code to help you get started with data processing.
-
-## Overview
-
-DLT StreamForge provides a powerful framework for generating realistic data across various sectors (Energy, Retail, Healthcare, etc.) by defining your data models in YAML schemas. It's designed to be deployed as a Databricks App, making it easy to generate and manage test data in your Databricks environment. The platform automatically handles relationships between tables, ensuring that foreign keys in fact tables reference valid dimension keys, and maintains data consistency across your entire dataset. Additionally, it generates ready-to-use DLT pipeline code in Python or SQL to help you build your data processing workflows.
+A Python-based data generation tool for creating realistic streaming data pipelines with Databricks Delta Live Tables (DLT). This tool generates dimension, fact, and change feed tables with configurable schemas and data quality rules.
 
 ## Features
 
-- **Sector-Agnostic**: Generate data for any sector by adding new schema definitions
-- **Schema-Driven**: Data generation based on YAML schema definitions
-- **Realistic Data Patterns**: Generates meaningful categorical values and realistic data distributions
-- **Referential Integrity**: Maintains relationships between dimension and fact tables
-- **DLT Pipeline Generation**: Creates Python or SQL code for DLT pipeline
-- **Continuous Data Generation**: Fact and change feed data are generated every 30 seconds, while dimension data is generated once
-- **Multiple Data Types**: Supports various data types including:
-  - Numerical (int, float)
-  - Temporal (datetime)
-  - Categorical (string with predefined formats)
-  - Boolean
-  - Composite types (arrays, maps)
+- **Multiple Table Types**:
+  - Dimension tables with configurable key ranges
+  - Fact tables with foreign key relationships
+  - Change feed tables with SCD Type 2 support
+  - Support for multiple industries (Retail, Energy, etc.)
 
-## Project Structure
+- **Data Quality Rules**:
+  - Configurable min/max values for numeric columns
+  - Anomaly percentage to generate out-of-range values
+  - Automatic data quality rule application during generation
+  - Support for both normal and anomalous data patterns
 
+- **DLT Pipeline Generation**:
+  - Automatic DLT code generation in SQL and Python
+  - Support for streaming tables and views
+  - SCD Type 2 implementation for change feeds
+  - Exportable as Jupyter notebooks
+
+## Prerequisites
+
+- Python 3.8+
+- Databricks CLI configured (for Databricks deployment)
+- Required Python packages (see requirements.txt)
+
+## Installation
+
+1. Clone the repository:
+```bash
+git clone https://github.com/yourusername/dlt-streamforge.git
+cd dlt-streamforge
 ```
-.
-├── app.py                    # Main Databricks App entry point
-├── app.yaml                  # Databricks App configuration
-├── requirements.txt          # Project dependencies
-├── data_generators/          # Core data generation logic
-│   ├── base_generator.py     # Base class for all generators
-│   ├── dimension_generator.py # Handles dimension table generation
-│   ├── fact_generator.py     # Handles fact table generation
-│   └── change_feed_generator.py # Handles change feed generation
-└── schema/                   # YAML schema definitions
-    ├── Energy/              # Energy sector schemas
-    ├── Retail/              # Retail sector schemas
-    └── [Your Sector]/       # Add your own sector schemas
+
+2. Install dependencies:
+```bash
+pip install -r requirements.txt
 ```
 
-## Schema Categories
+## Usage
 
-The project supports three types of schemas, each serving a specific purpose in data generation:
+1. **Configure Schema**:
+   - Place your schema YAML files in the `schema/{industry}` directory
+   - Define tables, columns, and data quality rules
+   - Example schema structure:
+   ```yaml
+   table: energy_consumption
+   type: fact
+   num_rows: 1000
+   columns:
+     plant_id:
+       type: int
+     consumption_value:
+       type: float
+   data_quality_rules:
+     consumption_value:
+       min_value: 0
+       max_value: 1000
+       anomaly_percentage: 0.05  # 5% of values will be outside range
+   ```
 
-### 1. Dimension Schemas
-Dimension tables store descriptive attributes and reference data. Example:
+2. **Run the Application**:
+   ```bash
+   python app.py
+   ```
+
+3. **Generate Data**:
+   - Select your industry
+   - Choose output language (SQL/Python)
+   - Enter an empty output path (directory must be empty)
+   - Click "Start" to begin generation
+
+## Schema Configuration
+
+### Table Types
+
+1. **Dimension Tables**:
+   ```yaml
+   table: equipment
+   type: dimension
+   num_rows: 500
+   columns:
+     equipment_id:
+       type: int
+     equipment_name:
+       type: string
+   ```
+
+2. **Fact Tables**:
+   ```yaml
+   table: energy_consumption
+   type: fact
+   num_rows: 1000
+   columns:
+     plant_id:
+       type: int
+     consumption_value:
+       type: float
+   data_quality_rules:
+     consumption_value:
+       min_value: 0
+       max_value: 1000
+       anomaly_percentage: 0.05
+   ```
+
+3. **Change Feed Tables**:
+   ```yaml
+   table: customer_changes
+   type: change_feed
+   num_rows: 100
+   columns:
+     key:
+       type: string
+     change_timestamp:
+       type: datetime
+   change_feed_rules:
+     dlt_config:
+       keys: ["key"]
+       sequence_by: "change_timestamp"
+   ```
+
+### Data Quality Rules
+
+Data quality rules can be defined for any column in your schema:
+
 ```yaml
-# schema/Energy/equipment.yml
-table: equipment
-type: dimension
-num_rows: 500
-columns:
-  equipment_id: int
-  equipment_name: 
-    type: string
-    format: "e######"
-  equipment_type: 
-    type: string
-    format: "GAS_TURBINE|STEAM_TURBINE|WIND_TURBINE|SOLAR_PANEL"
-  status: 
-    type: string
-    format: "OPERATIONAL|MAINTENANCE|OFFLINE|DECOMMISSIONED"
+data_quality_rules:
+  column_name:
+    min_value: 0        # Minimum allowed value
+    max_value: 1000     # Maximum allowed value
+    anomaly_percentage: 0.05  # Percentage of values that will be outside range
 ```
 
-### 2. Fact Schemas
-Fact tables store measurable events and metrics. These tables are continuously generated every 30 seconds and placed in the Unity Catalog volume path under corresponding subdirectories. Example:
-```yaml
-# schema/Energy/electricity_production.yml
-table: electricity_production
-type: fact
-num_rows: 1000
-columns:
-  production_id: int
-  plant_id: int
-  equipment_id: int
-  timestamp: datetime
-  generation_mwh: float
-  weather_conditions: 
-    type: string
-    format: "CLEAR|CLOUDY|RAINY|STORMY|SNOWY"
-```
+## Output
 
-### 3. Change Feed Schemas
-Change feed tables track modifications to dimension tables. Like fact tables, these are also generated every 30 seconds and placed in the Unity Catalog volume path under corresponding subdirectories. Example:
-```yaml
-# schema/Energy/customer_changes.yml
-table: customer_changes
-type: change_feed
-num_rows: 100
-columns:
-  change_id: int
-  customer_id: int
-  change_type:
-    type: string
-    format: "INSERT|UPDATE|DELETE"
-  change_timestamp: datetime
-  changed_fields: 
-    type: array
-    items: string
-```
+The tool generates:
+1. CSV files for each table
+2. DLT pipeline code in SQL and Python
+3. Jupyter notebook with complete pipeline code
 
 ## Deployment
 
 ### Local Development
+- Run `python app.py`
+- Access the UI at `http://localhost:8050`
 
-1. Install the required dependencies:
-   ```bash
-   pip install -r requirements.txt
-   ```
-2. Run the application:
-   ```bash
-   python app.py
-   ```
-   This will start the application locally and generate data in the specified output directory.
+### Databricks Deployment
+1. Configure Databricks CLI
+2. Deploy to Databricks workspace
+3. Access through Databricks URL
 
-### Databricks Apps Deployment
+## Contributing
 
-1. Import the project into your Databricks workspace
-2. Deploy as a Databricks App following the [official Databricks Apps documentation](https://docs.databricks.com/aws/en/dev-tools/databricks-apps/get-started)
-3. Configure your schema files in the `schema/` directory
-4. Ensure you have Unity Catalog Volume read and write permissions for data generation
-5. Use the app to generate data directly in your Databricks environment
+1. Fork the repository
+2. Create a feature branch
+3. Submit a pull request
 
-The project includes:
-- `app.py`: Main application entry point
-- `app.yaml`: Databricks App configuration
-- `requirements.txt`: Required Python dependencies
+## License
 
-## Schema Definition Features
-
-### Table Types
-- `dimension`: For reference data and attributes
-- `fact`: For measurable events and metrics
-- `change_feed`: For tracking dimension table changes
-
-### Format Specifications
-
-The platform supports various data types and formats for generating realistic data:
-
-#### Data Types
-- `int`: Random integers between 1 and 9999
-- `float`: Random floats between 0 and 1000 (rounded to 2 decimal places)
-- `string`: Various string formats and smart field detection
-- `datetime`: ISO format timestamps
-- `bool`: Boolean values
-
-#### String Format Types
-1. **Pipe-separated Values**
-   ```yaml
-   format: "RES|COM|IND"  # Randomly selects one value
-   ```
-
-2. **Pattern-based Formats**
-   ```yaml
-   format: "RATE-##"     # Replaces # with random digits
-   format: "MTR-####-####"  # Multiple digit groups
-   ```
-
-3. **Smart Field Detection**
-   The generator automatically detects common field names and generates appropriate values:
-   - `name`: Generates random names
-   - `address`: Generates random addresses
-   - `city`: Generates random cities
-   - `state`: Generates random states
-   - `zip`: Generates random zip codes
-   - Other fields: Generates random words with title case
-
-#### Special Handling
-- Fields ending with `_id` are automatically assigned sequential values
-- Foreign keys in fact tables use dimension key ranges for referential integrity:
-  - Primary key ranges from dimension tables are stored (e.g., equipment_id: 1-500)
-  - Fact table foreign keys are generated within these ranges (e.g., equipment_id in production table will only use values 1-500)
-  - This ensures all foreign keys reference valid dimension records
-- Change feed tables support operation types (INSERT|UPDATE|DELETE) and timestamp generation
+This project is licensed under the MIT License - see the LICENSE file for details.

@@ -126,16 +126,59 @@ def generate_dlt_references(schema, output_path, table_type):
     """Generate DLT reference code for a table."""
     table_name = schema["table"]
     
-    # SQL DLT code
-    sql_code = f'''
+    if table_type == "change_feed":
+        # Get DLT configuration from schema
+        dlt_config = schema.get("change_feed_rules", {}).get("dlt_config", {})
+        keys = dlt_config.get("keys", ["key"])  # Default to ["key"] if not specified
+        sequence_by = dlt_config.get("sequence_by", "change_timestamp")  # Default to change_timestamp if not specified
+        
+        # SQL DLT code for change feed
+        sql_code = f'''
+-- Create streaming view for change feed
+CREATE OR REFRESH STREAMING VIEW {table_name}_view
+AS SELECT * FROM STREAM read_files("{output_path}/", format => "csv");
+
+-- Create streaming table
+CREATE OR REFRESH STREAMING TABLE {table_name};
+
+-- Apply changes using SCD Type 2
+APPLY CHANGES INTO {table_name}
+FROM {table_name}_view
+KEYS ({', '.join(keys)})
+SEQUENCE BY {sequence_by}
+STORED AS SCD TYPE 2;
+'''
+        
+        # Python DLT code for change feed
+        python_code = f'''@dlt.view(name="{table_name}_view")
+def source():
+    return (spark.readStream
+        .format("cloudFiles")
+        .option("cloudFile.format", "csv")
+        .load("{output_path}/")
+    )
+
+dlt.create_streaming_table("{table_name}")
+
+dlt.apply_changes_into(
+    target="{table_name}",
+    source="{table_name}_view",
+    keys={keys},
+    sequence_by="{sequence_by}",
+    stored_as_scd_type=2
+)
+'''
+    else:
+        # SQL DLT code for regular tables
+        sql_code = f'''
 CREATE OR REFRESH STREAMING TABLE {table_name}_bronze
 AS SELECT * FROM STREAM read_files("{output_path}/", format => "csv")
 '''
-    
-    # Python DLT code
-    python_code = f'''@dlt.table(name="{table_name}_bronze")
+        
+        # Python DLT code for regular tables
+        python_code = f'''@dlt.table(name="{table_name}_bronze")
 def {table_name}_bronze():
-    return (spark.read
+    return (spark.readStream
         .format("cloudFiles")
         .option("cloudFile.format", "csv")
         .load("{output_path}/")
@@ -146,6 +189,15 @@ def {table_name}_bronze():
         'sql': sql_code,
         'python': python_code
     }
+
+def check_output_directories(industry, output_path):
+    """Check if output directories are empty before starting generation."""
+    schemas = load_all_schemas(industry)
+    for schema in schemas:
+        table = schema["table"]
+        table_dir = os.path.join(output_path, industry, table)
+        if os.path.exists(table_dir) and os.listdir(table_dir):
+            raise ValueError(f"Directory {table_dir} is not empty. Please clear the directory before generating new data.")
 
 def generate_files_for_industry(industry):
     """Generate all data files for an industry."""
@@ -210,7 +262,7 @@ def generate_files_for_industry(industry):
 
         except Exception as e:
             print(f"Error processing table {table}: {str(e)}")
-            continue
+            raise
 
     # Print DLT references after first iteration
     if current_iteration == 0 and dlt_references:
@@ -524,17 +576,26 @@ def control_generation(button_clicks, n_intervals, selected_industry, selected_l
                              style={'color': '#FF3621'})
                 ], style={'padding': '12px'}), "Start", start_style, loading_message, section_style, None, None, export_button_style
             
-            print("\nStarting generation...")
-            status['iteration_count'] = 0
-            status['start_time'] = time.time()
-            status['dlt_code'] = None
-            status['output_path'] = path_input
-            dimension_key_ranges = {}
-            status["running"] = True
-            status["industry"] = selected_industry
-            
-            section_style['display'] = 'block'
-            return False, f"Generating files for '{selected_industry}'...", "Stop", stop_style, loading_message, section_style, selected_industry, selected_language, export_button_style
+            try:
+                # Check directories before starting generation
+                check_output_directories(selected_industry, path_input)
+                
+                print("\nStarting generation...")
+                status['iteration_count'] = 0
+                status['start_time'] = time.time()
+                status['dlt_code'] = None
+                status['output_path'] = path_input
+                dimension_key_ranges = {}
+                status["running"] = True
+                status["industry"] = selected_industry
+                
+                section_style['display'] = 'block'
+                return False, f"Generating files for '{selected_industry}'...", "Stop", stop_style, loading_message, section_style, selected_industry, selected_language, export_button_style
+            except Exception as e:
+                return True, html.Div([
+                    html.Span(f"⚠️ {str(e)}", 
+                             style={'color': '#FF3621'})
+                ], style={'padding': '12px'}), "Start", start_style, None, section_style, None, None, export_button_style
         else:  # Stop button was clicked
             print("\nStopping generation...")
             status["running"] = False
@@ -557,7 +618,19 @@ def control_generation(button_clicks, n_intervals, selected_industry, selected_l
             export_button_style['display'] = 'none'
             return True, "Generation stopped after 3 hours.", "Start", start_style, None, section_style, None, None, export_button_style
         
-        generate_files_for_industry(status["industry"])
+        try:
+            generate_files_for_industry(status["industry"])
+        except Exception as e:
+            # Handle any error by stopping the generation and displaying the error message
+            status["running"] = False
+            status["industry"] = None
+            status['start_time'] = None
+            section_style['display'] = 'none'
+            export_button_style['display'] = 'none'
+            return True, html.Div([
+                html.Span(f"⚠️ {str(e)}", 
+                         style={'color': '#FF3621'})
+            ], style={'padding': '12px'}), "Start", start_style, None, section_style, None, None, export_button_style
         
         if status['iteration_count'] == 1 and status['dlt_code'] is None:
             print("\nGenerating DLT code...")
@@ -565,11 +638,12 @@ def control_generation(button_clicks, n_intervals, selected_industry, selected_l
                 schemas = load_all_schemas(status["industry"])
                 dlt_codes = []
                 for schema in schemas:
-                    if schema.get("type", "fact") in ["dimension", "fact"]:
+                    table_type = schema.get("type", "fact")
+                    if table_type in ["dimension", "fact", "change_feed"]:  # Added change_feed here
                         table = schema["table"]
                         output_path = os.path.join(status['output_path'], status["industry"], table)
-                        dlt_refs = generate_dlt_references(schema, output_path, schema.get("type", "fact"))
-                        print(f"Generated code for table: {table}")
+                        dlt_refs = generate_dlt_references(schema, output_path, table_type)
+                        print(f"Generated code for table: {table} (type: {table_type})")
                         dlt_codes.append({
                             "table": table,
                             "references": dlt_refs

@@ -1,6 +1,12 @@
 table: energy_consumption
 type: fact
 num_rows: 100
+data_quality_rules:
+  efficiency_rating:
+    min_value: 0.65  # 65% minimum efficiency
+    max_value: 0.95  # 95% maximum efficiency
+    anomaly_percentage: 0.15  # 15% of values will be outside this range
+    description: "Efficiency rating should be between 65% and 95% for normal operation"
 columns:
   consumption_id: int
   plant_id: int

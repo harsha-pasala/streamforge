@@ -27,6 +27,10 @@ change_feed_rules:
     - service_address
     - service_type
     - rate_plan
+  # DLT specific configurations
+  dlt_config:
+    keys: ["customer_id"]  # Primary key for change tracking
+    sequence_by: "change_timestamp"  # Field to sequence changes by
 columns:
   customer_id: int
   customer_name: string
