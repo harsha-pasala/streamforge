@@ -1,0 +1,20 @@
+table: maintenance_records
+type: fact
+num_rows: 100
+columns:
+  maintenance_id: int
+  equipment_id: int
+  maintenance_type: 
+    type: string
+    format: "PREVENTIVE|CORRECTIVE|PREDICTIVE|CONDITION_BASED|EMERGENCY"  # Types of maintenance
+  start_time: datetime
+  end_time: datetime
+  technician_id: int
+  cost: float
+  parts_replaced: 
+    type: string
+    format: "PART-####"  # e.g., PART-1234
+  maintenance_status: 
+    type: string
+    format: "SCHEDULED|IN_PROGRESS|COMPLETED|DELAYED|CANCELLED"  # Status of maintenance
+  plant_id: int 

@@ -1,0 +1,15 @@
+table: energy_consumption
+type: fact
+num_rows: 100
+columns:
+  consumption_id: int
+  plant_id: int
+  equipment_id: int
+  timestamp: datetime
+  fuel_consumption: float
+  efficiency_rating: float
+  emissions_kg: float
+  operating_hours: float
+  load_factor: float
+  ambient_temperature: float
+  humidity: float 

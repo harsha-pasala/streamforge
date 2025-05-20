@@ -1,0 +1,45 @@
+table: inventory_movement
+type: fact
+num_rows: 200
+columns:
+  movement_id: int
+  store_id: int
+  product_id: int
+  movement_date: datetime
+  movement_type: 
+    type: string
+    format: "MOV-??"  # e.g., MOV-01
+  quantity: int
+  reference_id: 
+    type: string
+    format: "REF-####-####"  # e.g., REF-2023-0001
+  source_location: 
+    type: string
+    format: "LOC-??"  # e.g., LOC-01
+  destination_location: 
+    type: string
+    format: "LOC-??"  # e.g., LOC-02
+  reason_code: 
+    type: string
+    format: "REASON-??"  # e.g., REASON-01
+  batch_number: 
+    type: string
+    format: "BATCH-####"  # e.g., BATCH-0001
+  expiry_date: datetime
+  unit_cost: float
+  total_cost: float
+  operator_id: 
+    type: string
+    format: "OP-####"  # e.g., OP-0001
+  quality_check_status: 
+    type: string
+    format: "QC-??"  # e.g., QC-01
+  temperature_condition: 
+    type: string
+    format: "TEMP-??"  # e.g., TEMP-01
+  humidity_level: float
+  is_damaged: bool
+  damage_reason: 
+    type: string
+    format: "DAM-??"  # e.g., DAM-01
+  shelf_life_days: int 

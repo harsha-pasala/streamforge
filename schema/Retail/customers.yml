@@ -1,0 +1,45 @@
+table: customers
+type: dimension
+num_rows: 1000
+columns:
+  customer_id: int
+  customer_name: 
+    type: string
+    format: "CUST-####"  # e.g., CUST-0001
+  email: string
+  phone: string
+  address: string
+  city: string
+  state: string
+  country: string
+  postal_code: 
+    type: string
+    format: "ZIP-#####"  # e.g., ZIP-12345
+  customer_segment: 
+    type: string
+    format: "SEG-??"  # e.g., SEG-01
+  loyalty_tier: 
+    type: string
+    format: "TIER-?"  # e.g., TIER-1
+  loyalty_points: int
+  registration_date: datetime
+  last_purchase_date: datetime
+  preferred_store_id: int
+  preferred_payment_method: 
+    type: string
+    format: "PAY-??"  # e.g., PAY-01
+  credit_limit: float
+  status: 
+    type: string
+    format: "STATUS-?"  # e.g., STATUS-1
+  birth_date: datetime
+  gender: 
+    type: string
+    format: "GEN-?"  # e.g., GEN-M
+  household_size: int
+  annual_income_range: 
+    type: string
+    format: "INC-??"  # e.g., INC-01
+  preferred_categories: 
+    type: string
+    format: "CAT-??,CAT-??"  # e.g., CAT-01,CAT-02 

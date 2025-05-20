@@ -1,0 +1,41 @@
+table: sales
+type: fact
+num_rows: 200
+columns:
+  sale_id: int
+  transaction_id: 
+    type: string
+    format: "TRX-####-####"  # e.g., TRX-2023-0001
+  store_id: int
+  customer_id: int
+  product_id: int
+  sale_date: datetime
+  quantity: int
+  unit_price: float
+  discount_amount: float
+  tax_amount: float
+  total_amount: float
+  payment_method: 
+    type: string
+    format: "PAY-??"  # e.g., PAY-01
+  payment_status: 
+    type: string
+    format: "STATUS-?"  # e.g., STATUS-1
+  sales_channel: 
+    type: string
+    format: "CHAN-??"  # e.g., CHAN-01
+  promotion_id: 
+    type: string
+    format: "PROM-####"  # e.g., PROM-0001
+  loyalty_points_earned: int
+  return_flag: bool
+  return_reason: 
+    type: string
+    format: "RET-??"  # e.g., RET-01
+  sales_rep_id: 
+    type: string
+    format: "REP-####"  # e.g., REP-0001
+  weather_condition: 
+    type: string
+    format: "WTH-??"  # e.g., WTH-01
+  temperature: float

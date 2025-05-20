@@ -1,0 +1,9 @@
+dash
+dash-bootstrap-components
+pandas
+plotly
+databricks-sql-connector
+databricks-sdk>=0.12.0
+python-dotenv
+dash-ag-grid
+faker

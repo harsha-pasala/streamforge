@@ -1,0 +1,49 @@
+table: site_info
+type: dimension
+num_rows: 100
+columns:
+  plant_id: int
+  plant_name: 
+    type: string
+    format: "PLANT-####"  # e.g., PLANT-0001
+  plant_type: 
+    type: string
+    format: "TYPE-##"  # e.g., TYPE-01
+  plant_location: 
+    type: string
+    format: "LOC-####"  # e.g., LOC-1234
+  address: string
+  city: string
+  state: string
+  country: string
+  postal_code: 
+    type: string
+    format: "ZIP-#####"  # e.g., ZIP-12345
+  latitude: float
+  longitude: float
+  total_capacity_mw: float
+  commissioning_date: datetime
+  grid_connection_type: 
+    type: string
+    format: "GRID-##"  # e.g., GRID-01
+  primary_fuel_type: 
+    type: string
+    format: "FUEL-##"  # e.g., FUEL-01
+  secondary_fuel_type: 
+    type: string
+    format: "FUEL-##"  # e.g., FUEL-02
+  operational_status: 
+    type: string
+    format: "STATUS-#"  # e.g., STATUS-1
+  plant_manager: 
+    type: string
+    format: "MGR-####"  # e.g., MGR-1234
+  email_address: string
+  phone_number: string
+  emergency_contact: 
+    type: string
+    format: "EMER-####"  # e.g., EMER-1234
+  regulatory_compliance_status: 
+    type: string
+    format: "COMP-##"  # e.g., COMP-01
+  last_inspection_date: datetime

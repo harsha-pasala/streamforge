@@ -1,0 +1,44 @@
+table: stores
+type: dimension
+num_rows: 500
+columns:
+  store_id: int
+  store_name: 
+    type: string
+    format: "STORE-####"  # e.g., STORE-0001
+  store_type: 
+    type: string
+    format: "TYPE-??"  # e.g., TYPE-01
+  address: string
+  city: string
+  state: string
+  country: string
+  postal_code: 
+    type: string
+    format: "ZIP-#####"  # e.g., ZIP-12345
+  latitude: float
+  longitude: float
+  store_size_sqft: float
+  opening_date: datetime
+  store_manager: 
+    type: string
+    format: "MGR-####"  # e.g., MGR-1234
+  phone_number: string
+  email: string
+  operating_hours: 
+    type: string
+    format: "HRS-####-####"  # e.g., HRS-0900-2100
+  store_format: 
+    type: string
+    format: "FMT-??"  # e.g., FMT-01
+  status: 
+    type: string
+    format: "STATUS-?"  # e.g., STATUS-1
+  last_renovation_date: datetime
+  sales_tax_rate: float
+  region: 
+    type: string
+    format: "REG-??"  # e.g., REG-01
+  district: 
+    type: string
+    format: "DIST-??"  # e.g., DIST-01 

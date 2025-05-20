@@ -1,0 +1,49 @@
+table: customer_changes
+type: change_feed
+num_rows: 100
+change_feed_rules:
+  # Distribution of operations for each customer_id
+  operation_distribution:
+    INSERT: 1      # Each customer gets exactly 1 INSERT
+    UPDATE: 3      # Each customer gets 0-3 UPDATEs
+    DELETE: 0.2    # 20% of customers get a DELETE
+  # Fields that can be updated in UPDATE operations
+  updatable_fields:
+    - customer_name
+    - service_address
+    - service_type
+    - rate_plan
+  # Time range for generating changes
+  time_range:
+    start_date: "2023-01-01"  # Start date for generating changes
+    end_date: "2024-03-15"    # End date for generating changes
+  # Minimum and maximum time between changes (in days)
+  time_between_changes:
+    min: 1
+    max: 90
+  # Fields that become null in DELETE operations
+  delete_null_fields:
+    - customer_name
+    - service_address
+    - service_type
+    - rate_plan
+columns:
+  customer_id: int
+  customer_name: string
+  account_number: 
+    type: string
+    format: "ACC-####-####"  # e.g., ACC-1234-5678
+  service_address: string
+  meter_number: 
+    type: string
+    format: "MTR-####-####"  # e.g., MTR-1234-5678
+  service_type: 
+    type: string
+    format: "RES|COM|IND"  # Residential, Commercial, Industrial
+  rate_plan: 
+    type: string
+    format: "RATE-##"  # e.g., RATE-01
+  operation: 
+    type: string
+    format: "INSERT|UPDATE|DELETE"
+  change_timestamp: datetime 

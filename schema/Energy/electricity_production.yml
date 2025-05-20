@@ -1,0 +1,31 @@
+table: electricity_production
+type: fact
+num_rows: 100
+columns:
+  production_id: int
+  plant_id: int
+  equipment_id: int
+  timestamp: datetime
+  generation_mwh: float
+  net_generation_mwh: float
+  auxiliary_consumption_mwh: float
+  outage_flag: bool
+  outage_type: 
+    type: string
+    format: "PLANNED|UNPLANNED|MAINTENANCE|EMERGENCY|NATURAL_DISASTER"  # Types of outages
+  outage_duration_hours: float
+  voltage_kv: float
+  frequency_hz: float
+  power_factor: float
+  reactive_power_mvar: float
+  fuel_consumption: float
+  efficiency_percentage: float
+  ambient_temperature: float
+  humidity: float
+  weather_conditions: 
+    type: string
+    format: "CLEAR|CLOUDY|RAINY|STORMY|SNOWY|FOGGY|WINDY|HOT|COLD"  # Weather conditions affecting production
+  grid_demand_mw: float
+  market_price_per_mwh: float
+  revenue: float
+  carbon_emissions_kg: float

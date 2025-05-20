@@ -1,0 +1,44 @@
+table: promotions
+type: dimension
+num_rows: 500
+columns:
+  promotion_id: int
+  promotion_name: 
+    type: string
+    format: "PROM-####"  # e.g., PROM-0001
+  promotion_type: 
+    type: string
+    format: "TYPE-??"  # e.g., TYPE-01
+  start_date: datetime
+  end_date: datetime
+  discount_type: 
+    type: string
+    format: "DISC-??"  # e.g., DISC-01
+  discount_value: float
+  minimum_purchase: float
+  maximum_discount: float
+  applicable_products: 
+    type: string
+    format: "PROD-####,PROD-####"  # e.g., PROD-0001,PROD-0002
+  applicable_categories: 
+    type: string
+    format: "CAT-??,CAT-??"  # e.g., CAT-01,CAT-02
+  applicable_stores: 
+    type: string
+    format: "STORE-####,STORE-####"  # e.g., STORE-0001,STORE-0002
+  customer_segments: 
+    type: string
+    format: "SEG-??,SEG-??"  # e.g., SEG-01,SEG-02
+  status: 
+    type: string
+    format: "STATUS-?"  # e.g., STATUS-1
+  created_by: 
+    type: string
+    format: "USER-####"  # e.g., USER-0001
+  created_date: datetime
+  last_modified_date: datetime
+  budget: float
+  actual_cost: float
+  expected_revenue: float
+  actual_revenue: float
+  roi: float 
