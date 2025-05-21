@@ -25,44 +25,18 @@ class ChangeFeedGenerator(BaseGenerator):
         """Generate a value based on column name and data type."""
         if isinstance(col_def, str):
             dtype = col_def
-            format_spec = None
         else:
             dtype = col_def.get('type', 'string')
-            format_spec = col_def.get('format')
             
-        col_lower = col.lower()
-        
-        if dtype == 'int':
-            return random.randint(1, 9999)
-        elif dtype == 'string':
-            if format_spec:
-                if '|' in format_spec:
-                    # Handle pipe-separated formats (e.g., "RES|COM|IND")
-                    return random.choice(format_spec.split('|'))
-                elif '#' in format_spec:
-                    # Handle formats with hash symbols for random digits (e.g., "RATE-##", "MTR-####-####")
-                    result = format_spec
-                    while '#' in result:
-                        result = result.replace('#', str(random.randint(0, 9)), 1)
-                    return result
-            elif 'name' in col_lower:
-                return self.fake.name()
-            elif 'address' in col_lower:
-                return self.fake.address()
-            elif 'city' in col_lower:
-                return self.fake.city()
-            elif 'state' in col_lower:
-                return self.fake.state()
-            elif 'zip' in col_lower:
-                return self.fake.zipcode()
-            else:
-                return self.fake.word().title()
-        elif dtype == 'datetime':
+        # Special handling for datetime in change feeds
+        if dtype == 'datetime':
             return self.fake.date_time_between(
                 start_date=self.rules['time_range']['start_date'],
                 end_date=self.rules['time_range']['end_date']
             ).isoformat()
-        return None
+            
+        # Use base implementation for all other types
+        return super()._generate_value(col, col_def)
 
     def _generate_update_row(self, base_row):
         """Generate an UPDATE row based on the previous row."""

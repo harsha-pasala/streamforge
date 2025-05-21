@@ -11,33 +11,32 @@ class FactGenerator(BaseGenerator):
         
     def _generate_value(self, col, col_def):
         """Generate a value based on column definition."""
-        if isinstance(col_def, str):
-            dtype = col_def
-        else:
-            dtype = col_def.get('type', 'string')
+        # Check if there are data quality rules for this column
+        if 'data_quality_rules' in self.schema and col in self.schema['data_quality_rules']:
+            rules = self.schema['data_quality_rules'][col]
+            min_value = rules.get('min_value')
+            max_value = rules.get('max_value')
+            anomaly_percentage = rules.get('anomaly_percentage', 0)
             
-        col_lower = col.lower()
-        
-        if dtype == 'int':
-            return self.fake.random_int(min=1, max=9999)
-        elif dtype == 'float':
-            return round(random.uniform(0, 1000), 2)
-        elif dtype == 'string':
-            if 'name' in col_lower:
-                return self.fake.name()
-            elif 'address' in col_lower:
-                return self.fake.address()
-            elif 'city' in col_lower:
-                return self.fake.city()
-            elif 'state' in col_lower:
-                return self.fake.state()
-            elif 'zip' in col_lower:
-                return self.fake.zipcode()
+            # Randomly decide if this value should be an anomaly
+            if random.random() < anomaly_percentage:
+                # Generate an anomalous value outside the normal range
+                if random.random() < 0.5:  # 50% chance of being below min
+                    value = min_value - random.uniform(0.1, 0.3)  # 10-30% below min
+                else:  # 50% chance of being above max
+                    value = max_value + random.uniform(0.1, 0.3)  # 10-30% above max
             else:
-                return self.fake.word().title()
-        elif dtype == 'datetime':
-            return self.fake.date_time().isoformat()
-        return None
+                # Generate a normal value within the range
+                value = random.uniform(min_value, max_value)
+            
+            # Round to 2 decimal places for float values
+            if isinstance(value, float):
+                value = round(value, 2)
+                
+            return value
+            
+        # Use base implementation if no quality rules
+        return super()._generate_value(col, col_def)
 
     def _generate_value_with_quality_rules(self, col, col_def):
         """Generate a value considering data quality rules if they exist."""

@@ -10,45 +10,7 @@ class DimensionGenerator(BaseGenerator):
         
     def _generate_value(self, col, col_def):
         """Generate a value based on column definition."""
-        if isinstance(col_def, str):
-            dtype = col_def
-            format_spec = None
-        else:
-            dtype = col_def.get('type', 'string')
-            format_spec = col_def.get('format')
-            
-        col_lower = col.lower()
-        
-        if dtype == 'int':
-            return self.fake.random_int(min=1, max=9999)
-        elif dtype == 'float':
-            return round(random.uniform(0, 1000), 2)
-        elif dtype == 'string':
-            if format_spec:
-                if '|' in format_spec:
-                    # Handle pipe-separated formats (e.g., "RES|COM|IND")
-                    return random.choice(format_spec.split('|'))
-                elif '#' in format_spec:
-                    # Handle formats with hash symbols for random digits (e.g., "RATE-##", "MTR-####-####")
-                    result = format_spec
-                    while '#' in result:
-                        result = result.replace('#', str(random.randint(0, 9)), 1)
-                    return result
-            elif 'name' in col_lower:
-                return self.fake.name()
-            elif 'address' in col_lower:
-                return self.fake.address()
-            elif 'city' in col_lower:
-                return self.fake.city()
-            elif 'state' in col_lower:
-                return self.fake.state()
-            elif 'zip' in col_lower:
-                return self.fake.zipcode()
-            else:
-                return self.fake.word().title()
-        elif dtype == 'datetime':
-            return self.fake.date_time().isoformat()
-        return None
+        return super()._generate_value(col, col_def)
         
     def generate_data(self):
         """Generate dimension table data."""

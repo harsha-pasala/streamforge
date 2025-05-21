@@ -4,8 +4,13 @@ import os
 import yaml
 import time
 import json
-from data_generators import DimensionGenerator, FactGenerator, ChangeFeedGenerator
+import logging
+from data_generators import DimensionGenerator, FactGenerator, ChangeFeedGenerator, BaseGenerator
 from dash.dependencies import ClientsideFunction
+
+# Set up logging
+logging.basicConfig(level=logging.INFO)
+logger = logging.getLogger(__name__)
 
 # Constants
 APP_DIR = os.path.dirname(os.path.abspath(__file__))
@@ -190,14 +195,7 @@ def {table_name}_bronze():
         'python': python_code
     }
 
-def check_output_directories(industry, output_path):
-    """Check if output directories are empty before starting generation."""
-    schemas = load_all_schemas(industry)
-    for schema in schemas:
-        table = schema["table"]
-        table_dir = os.path.join(output_path, industry, table)
-        if os.path.exists(table_dir) and os.listdir(table_dir):
-            raise ValueError(f"Directory {table_dir} is not empty. Please clear the directory before generating new data.")
+
 
 def generate_files_for_industry(industry):
     """Generate all data files for an industry."""
@@ -206,8 +204,8 @@ def generate_files_for_industry(industry):
     current_iteration = status['iteration_count']
     status['iteration_count'] += 1
 
-    print(f"\nIteration {current_iteration} for industry {industry}")
-    print(f"Current dimension_key_ranges: {dimension_key_ranges}")
+    logger.info(f"\nIteration {current_iteration} for industry {industry}")
+    logger.debug(f"Current dimension_key_ranges: {dimension_key_ranges}")
 
     schemas = load_all_schemas(industry)
     dlt_references = []
@@ -219,22 +217,23 @@ def generate_files_for_industry(industry):
                 for col in schema["columns"]:
                     if col.endswith("_id"):
                         dimension_key_ranges[col] = schema.get("num_rows", 10)
-                        print(f"Storing dimension key range for {col}: {dimension_key_ranges[col]}")
+                        logger.debug(f"Storing dimension key range for {col}: {dimension_key_ranges[col]}")
 
     # Process all tables
     for schema in schemas:
         table = schema["table"]
         table_type = schema.get("type", "fact")
 
-        print(f"\nProcessing table: {table} (type: {table_type})")
+        logger.info(f"\nProcessing table: {table} (type: {table_type})")
 
         # Skip dimension tables after first iteration
         if table_type == "dimension" and current_iteration > 0:
-            print(f"Skipping dimension table {table} as iteration_count > 0")
+            logger.info(f"Skipping dimension table {table} as iteration_count > 0")
             continue
 
         try:
             schema_path = os.path.join(SCHEMA_BASE_PATH, industry, f"{table}.yml")
+            logger.info(f"Loading schema from: {schema_path}")
             
             # Select appropriate generator based on table type
             if table_type == "dimension":
@@ -244,15 +243,19 @@ def generate_files_for_industry(industry):
             elif table_type == "change_feed":
                 generator = ChangeFeedGenerator(schema_path, status['output_path'])
             else:
-                print(f"Unknown table type: {table_type}")
+                logger.warning(f"Unknown table type: {table_type}")
                 continue
 
             # Generate and save data
+            logger.info(f"Generating data for table: {table}")
             df = generator.generate_data()
+            logger.info(f"Saving data for table: {table}")
             output_path = generator.save_data(df, table)
+            logger.info(f"Data saved to: {output_path}")
             
             # Generate DLT references for first iteration
             if current_iteration == 0:
+                logger.info(f"Generating DLT references for table: {table}")
                 dlt_refs = generate_dlt_references(schema, output_path, table_type)
                 dlt_references.append({
                     "table": table,
@@ -261,21 +264,21 @@ def generate_files_for_industry(industry):
                 })
 
         except Exception as e:
-            print(f"Error processing table {table}: {str(e)}")
+            logger.error(f"Error processing table {table}: {str(e)}")
             raise
 
     # Print DLT references after first iteration
     if current_iteration == 0 and dlt_references:
-        print("\n=== DLT Reference Code ===")
+        logger.info("\n=== DLT Reference Code ===")
         for ref in dlt_references:
-            print(f"\nTable: {ref['table']} ({ref['type']})")
-            print("\nSQL DLT Code:")
-            print(ref['references']['sql'])
-            print("\nPython DLT Code:")
-            print(ref['references']['python'])
-            print("\n" + "="*50)
+            logger.info(f"\nTable: {ref['table']} ({ref['type']})")
+            logger.debug("\nSQL DLT Code:")
+            logger.debug(ref['references']['sql'])
+            logger.debug("\nPython DLT Code:")
+            logger.debug(ref['references']['python'])
+            logger.debug("\n" + "="*50)
 
-    print(f"\nCompleted iteration {current_iteration}")
+    logger.info(f"\nCompleted iteration {current_iteration}")
 
 def create_dlt_code_display(dlt_codes, language):
     """Create the DLT code display component."""
@@ -577,9 +580,6 @@ def control_generation(button_clicks, n_intervals, selected_industry, selected_l
                 ], style={'padding': '12px'}), "Start", start_style, loading_message, section_style, None, None, export_button_style
             
             try:
-                # Check directories before starting generation
-                check_output_directories(selected_industry, path_input)
-                
                 print("\nStarting generation...")
                 status['iteration_count'] = 0
                 status['start_time'] = time.time()
