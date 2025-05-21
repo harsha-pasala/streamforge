@@ -128,8 +128,29 @@ def load_all_schemas(industry):
     return schemas
 
 def generate_dlt_references(schema, output_path, table_type):
-    """Generate DLT reference code for a table."""
+    """Generate DLT reference code for a table in both SQL and Python."""
     table_name = schema["table"]
+    
+    # Generate quality constraints only for fact and dimension tables
+    quality_constraints = []
+    if table_type in ['fact', 'dimension'] and 'data_quality_rules' in schema:
+        for column, rules in schema['data_quality_rules'].items():
+            if 'min_value' in rules and 'max_value' in rules:
+                constraint_name = f"valid_{column}"
+                constraint_condition = f"{column} BETWEEN {rules['min_value']} AND {rules['max_value']}"
+                
+                # Validate action is one of the allowed values
+                action = rules.get('action', 'warn').lower()
+                if action not in ['warn', 'drop', 'fail']:
+                    logger.warning(f"Invalid action '{action}' for column {column}. Defaulting to 'warn'.")
+                    action = 'warn'
+                
+                quality_constraints.append({
+                    'name': constraint_name,
+                    'condition': constraint_condition,
+                    'description': rules.get('description', f'Valid range for {column}'),
+                    'action': action
+                })
     
     if table_type == "change_feed":
         # Get DLT configuration from schema
@@ -173,15 +194,21 @@ dlt.apply_changes_into(
     stored_as_scd_type=2
 )
 '''
-    else:
+    else:  # fact or dimension
+        constraint_lines = []
+        for c in quality_constraints:
+            constraint_lines.append(f"CONSTRAINT {c['name']} EXPECT ({c['condition']}) ON VIOLATION {c['action'].upper()}")
+        constraints_sql = f"(\n{', '.join(constraint_lines)}\n)" if quality_constraints else ""
+        
         # SQL DLT code for regular tables
         sql_code = f'''
-CREATE OR REFRESH STREAMING TABLE {table_name}_bronze
+CREATE OR REFRESH STREAMING TABLE {table_name}_bronze{constraints_sql}
 AS SELECT * FROM STREAM read_files("{output_path}/", format => "csv")
 '''
         
         # Python DLT code for regular tables
         python_code = f'''@dlt.table(name="{table_name}_bronze")
+{chr(10).join([f'@dlt.expect("{c["name"]}", "{c["condition"]}", mode="{c["action"]}")' for c in quality_constraints])}
 def {table_name}_bronze():
     return (spark.readStream
         .format("cloudFiles")
@@ -194,8 +221,6 @@ def {table_name}_bronze():
         'sql': sql_code,
         'python': python_code
     }
-
-
 
 def generate_files_for_industry(industry):
     """Generate all data files for an industry."""
@@ -294,7 +319,7 @@ def create_dlt_code_display(dlt_codes, language):
         html.Div([
             html.H4(f"Table: {code['table']}", style={'marginBottom': '10px'}),
             html.Div([
-                html.Pre(code['references'][language], style=STYLES['code_block'])
+                html.Pre(code['code'][language], style=STYLES['code_block'])
             ])
         ]) for code in dlt_codes
     ])
@@ -320,7 +345,7 @@ def create_notebook_content(dlt_codes, selected_language):
                 "cell_type": "code",
                 "execution_count": None,
                 "metadata": {},
-                "source": [code['references'][selected_language]],
+                "source": [code['code'][selected_language]],
                 "outputs": []
             }
         ])
@@ -521,17 +546,16 @@ app.layout = html.Div([
     Output('control-button', 'style'),
     Output('dlt-code-display', 'children'),
     Output('dlt-code-section', 'style'),
-    Output('industry-dropdown', 'value'),
-    Output('language-dropdown', 'value'),
     Output('export-button-container', 'style'),
     Input('control-button', 'n_clicks'),
     Input('interval-timer', 'n_intervals'),
+    Input('language-dropdown', 'value'),
     State('industry-dropdown', 'value'),
-    State('language-dropdown', 'value'),
     State('path-input', 'value'),
+    State('dlt-code-section', 'style'),
     prevent_initial_call=True
 )
-def control_generation(button_clicks, n_intervals, selected_industry, selected_language, path_input):
+def control_generation(button_clicks, n_intervals, selected_language, selected_industry, path_input, current_section_style):
     global dimension_key_ranges, status
     
     ctx = dash.callback_context
@@ -544,7 +568,7 @@ def control_generation(button_clicks, n_intervals, selected_industry, selected_l
     print(f"Current DLT code: {status['dlt_code'] is not None}")
 
     # Default section style
-    section_style = {**STYLES['container'], 'display': 'none'}
+    section_style = current_section_style if current_section_style else {**STYLES['container'], 'display': 'none'}
     export_button_style = {'textAlign': 'center', 'display': 'none'}
 
     # Loading message component
@@ -565,19 +589,19 @@ def control_generation(button_clicks, n_intervals, selected_industry, selected_l
                 return True, html.Div([
                     html.Span("⚠️ Please enter a path to the volume.", 
                              style={'color': '#FF3621'})
-                ], style={'padding': '12px'}), "Start", start_style, loading_message, section_style, None, None, export_button_style
+                ], style={'padding': '12px'}), "Start", start_style, loading_message, section_style, export_button_style
             
             if not selected_industry:
                 return True, html.Div([
                     html.Span("⚠️ Please select an industry.", 
                              style={'color': '#FF3621'})
-                ], style={'padding': '12px'}), "Start", start_style, loading_message, section_style, None, None, export_button_style
+                ], style={'padding': '12px'}), "Start", start_style, loading_message, section_style, export_button_style
             
             if not selected_language:
                 return True, html.Div([
                     html.Span("⚠️ Please select a language.", 
                              style={'color': '#FF3621'})
-                ], style={'padding': '12px'}), "Start", start_style, loading_message, section_style, None, None, export_button_style
+                ], style={'padding': '12px'}), "Start", start_style, loading_message, section_style, export_button_style
             
             try:
                 print("\nStarting generation...")
@@ -590,12 +614,12 @@ def control_generation(button_clicks, n_intervals, selected_industry, selected_l
                 status["industry"] = selected_industry
                 
                 section_style['display'] = 'block'
-                return False, f"Generating files for '{selected_industry}'...", "Stop", stop_style, loading_message, section_style, selected_industry, selected_language, export_button_style
+                return False, f"Generating files for '{selected_industry}'...", "Stop", stop_style, loading_message, section_style, export_button_style
             except Exception as e:
                 return True, html.Div([
                     html.Span(f"⚠️ {str(e)}", 
                              style={'color': '#FF3621'})
-                ], style={'padding': '12px'}), "Start", start_style, None, section_style, None, None, export_button_style
+                ], style={'padding': '12px'}), "Start", start_style, None, section_style, export_button_style
         else:  # Stop button was clicked
             print("\nStopping generation...")
             status["running"] = False
@@ -603,25 +627,24 @@ def control_generation(button_clicks, n_intervals, selected_industry, selected_l
             status['start_time'] = None
             section_style['display'] = 'none'
             export_button_style['display'] = 'none'
-            return True, "Stopped.", "Start", start_style, None, section_style, None, None, export_button_style
+            return True, "Stopped.", "Start", start_style, None, section_style, export_button_style
 
     elif trigger == 'interval-timer':
         if not status["running"] or not status["industry"]:
             raise dash.exceptions.PreventUpdate
         
-        if status['start_time'] and (time.time() - status['start_time']) > 3600:  # Changed from 10800 to 3600 (1 hour)
+        if status['start_time'] and (time.time() - status['start_time']) > 3600:  # 1 hour limit
             print("\nTime limit reached...")
             status["running"] = False
             status["industry"] = None
             status['start_time'] = None
             section_style['display'] = 'none'
             export_button_style['display'] = 'none'
-            return True, "Generation stopped after 1 hour.", "Start", start_style, None, section_style, None, None, export_button_style
+            return True, "Generation stopped after 1 hour.", "Start", start_style, None, section_style, export_button_style
         
         try:
             generate_files_for_industry(status["industry"])
         except Exception as e:
-            # Handle any error by stopping the generation and displaying the error message
             status["running"] = False
             status["industry"] = None
             status['start_time'] = None
@@ -630,7 +653,7 @@ def control_generation(button_clicks, n_intervals, selected_industry, selected_l
             return True, html.Div([
                 html.Span(f"⚠️ {str(e)}", 
                          style={'color': '#FF3621'})
-            ], style={'padding': '12px'}), "Start", start_style, None, section_style, None, None, export_button_style
+            ], style={'padding': '12px'}), "Start", start_style, None, section_style, export_button_style
         
         if status['iteration_count'] == 1 and status['dlt_code'] is None:
             print("\nGenerating DLT code...")
@@ -639,31 +662,41 @@ def control_generation(button_clicks, n_intervals, selected_industry, selected_l
                 dlt_codes = []
                 for schema in schemas:
                     table_type = schema.get("type", "fact")
-                    if table_type in ["dimension", "fact", "change_feed"]:  # Added change_feed here
+                    if table_type in ["dimension", "fact", "change_feed"]:
                         table = schema["table"]
                         output_path = os.path.join(status['output_path'], status["industry"], table)
-                        dlt_refs = generate_dlt_references(schema, output_path, table_type)
+                        code = generate_dlt_references(schema, output_path, table_type)
                         print(f"Generated code for table: {table} (type: {table_type})")
                         dlt_codes.append({
                             "table": table,
-                            "references": dlt_refs
+                            "code": code
                         })
                 
-                status['dlt_code'] = create_dlt_code_display(dlt_codes, selected_language)
+                status['dlt_code'] = dlt_codes
                 print(f"Stored DLT code: {status['dlt_code'] is not None}")
                 section_style['display'] = 'block'
                 export_button_style['display'] = 'block'
-                return False, f"Generating files for '{status['industry']}'...", "Stop", stop_style, status['dlt_code'], section_style, status["industry"], selected_language, export_button_style
+                return False, f"Generating files for '{status['industry']}'...", "Stop", stop_style, create_dlt_code_display(dlt_codes, selected_language), section_style, export_button_style
             except Exception as e:
                 print(f"Error generating DLT code: {str(e)}")
                 section_style['display'] = 'block'
                 export_button_style['display'] = 'none'
-                return False, f"Generating files for '{status['industry']}'...", "Stop", stop_style, loading_message, section_style, status["industry"], selected_language, export_button_style
+                return False, f"Generating files for '{status['industry']}'...", "Stop", stop_style, loading_message, section_style, export_button_style
         
         print("\nSubsequent iteration - using stored code")
         section_style['display'] = 'block'
         export_button_style['display'] = 'block' if status['dlt_code'] else 'none'
-        return False, f"Generating files for '{status['industry']}'...", "Stop", stop_style, status['dlt_code'], section_style, status["industry"], selected_language, export_button_style
+        return False, f"Generating files for '{status['industry']}'...", "Stop", stop_style, create_dlt_code_display(status['dlt_code'], selected_language), section_style, export_button_style
+
+    elif trigger == 'language-dropdown':
+        if not status['dlt_code']:
+            raise dash.exceptions.PreventUpdate
+        
+        # Maintain current section visibility and export button state
+        export_button_style['display'] = 'block' if status['dlt_code'] else 'none'
+        
+        # Simply update the display with the stored code for the new language
+        return False, f"Generating files for '{status['industry']}'...", "Stop", stop_style, create_dlt_code_display(status['dlt_code'], selected_language), section_style, export_button_style
 
     raise dash.exceptions.PreventUpdate
 
@@ -677,23 +710,8 @@ def export_notebook(n_clicks, selected_language):
     if not status['dlt_code'] or not status['industry']:
         raise dash.exceptions.PreventUpdate
     
-    # Extract DLT codes from the stored code
-    dlt_codes = []
-    for child in status['dlt_code'].children:
-        if isinstance(child, html.Div):
-            table_name = child.children[0].children.split(': ')[1]
-            # Get the code from the pre element
-            code = child.children[1].children[0].children
-            # Generate code for the table in the selected language
-            output_path = os.path.join(status['output_path'], status['industry'], table_name)
-            dlt_refs = generate_dlt_references({'table': table_name}, output_path, 'fact')
-            dlt_codes.append({
-                'table': table_name,
-                'references': dlt_refs
-            })
-    
-    # Create notebook content with only the selected language
-    notebook_content = create_notebook_content(dlt_codes, selected_language)
+    # Create notebook content with the current language
+    notebook_content = create_notebook_content(status['dlt_code'], selected_language)
     
     # Return the notebook file for download
     return dcc.send_bytes(
@@ -711,31 +729,6 @@ def update_export_button(code_display):
     if not code_display or isinstance(code_display, str):
         return True
     return False
-
-@app.callback(
-    Output('dlt-code-display', 'children', allow_duplicate=True),
-    Input('language-dropdown', 'value'),
-    prevent_initial_call=True
-)
-def update_language(selected_language):
-    if not status['dlt_code']:
-        raise dash.exceptions.PreventUpdate
-    
-    # Extract DLT codes from the stored code
-    dlt_codes = []
-    for child in status['dlt_code'].children:
-        if isinstance(child, html.Div):
-            table_name = child.children[0].children.split(': ')[1]
-            code = child.children[1].children[0].children
-            dlt_codes.append({
-                'table': table_name,
-                'references': {
-                    'sql': code if selected_language == 'sql' else None,
-                    'python': code if selected_language == 'python' else None
-                }
-            })
-    
-    return create_dlt_code_display(dlt_codes, selected_language)
 
 if __name__ == "__main__":
     app.run(debug=True)
