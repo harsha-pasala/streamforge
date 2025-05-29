@@ -7,6 +7,7 @@ data_quality_rules:
     max_value: 0.95  # 95% maximum efficiency
     anomaly_percentage: 0.15  # 15% of values will be outside this range
     description: "Efficiency rating should be between 65% and 95% for normal operation"
+    action: "WARN"  # WARN, FAIL, or DROP
 columns:
   consumption_id: int
   plant_id: int
