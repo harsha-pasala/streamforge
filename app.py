@@ -354,29 +354,17 @@ def create_notebook_content(dlt_codes, selected_language):
 
 This notebook contains the DLT pipeline code for creating bronze tables in {selected_language.upper()}.
 
-#### Action Items
-Look for these placeholders in the code and replace them with your values:
-
-1. Table Location:
-   - `CHANGE_HERE: <catalog>.<schema>` - Replace with your Unity Catalog and schema names
-   - `CHANGE_HERE: <schema>` - Replace with your schema name
-   - Or use just the table name to use default catalog and schema
-
-2. Table Documentation:
-   - `CHANGE_HERE: <enter_table_comment>` - Add a descriptive comment about the table
-
-3. Change Feed Configuration:
-   - `CHANGE_HERE: <1/2>` - Choose SCD type (1 or 2)
+Look for `<CHANGE_HERE: ...>` placeholders in the code and replace them with your values. Detailed instructions follow below.
 
 #### Table Naming Instructions
 Before running the code, you need to specify where your tables will be stored. You can use any of these three formats:
 
 1. Three level catalog.schema.table format:
-   - Replace `CHANGE_HERE: <catalog>.<schema>` with your Unity Catalog and schema names
+   - Replace `<CHANGE_HERE: catalog>.<CHANGE_HERE: schema>` with your Unity Catalog and schema names
    - Example: `unity_catalog.my_schema.table_name`
 
 2. Two level schema.table format:
-   - Replace `CHANGE_HERE: <schema>` with your schema name
+   - Replace `<CHANGE_HERE: schema>` with your schema name
    - The default catalog will be used
    - Example: `my_schema.table_name`
 
@@ -389,11 +377,11 @@ Before running the code, you need to specify where your tables will be stored. Y
 For each table in the code:
 
 1. Table Comments:
-   - Replace `CHANGE_HERE: <enter_table_comment>` with a descriptive comment about the table's purpose and contents
+   - Replace `<CHANGE_HERE: enter_table_comment>` with a descriptive comment about the table's purpose and contents
    - Example: "Bronze table containing raw customer transaction data"
 
 2. For Change Feed Tables:
-   - Replace `CHANGE_HERE: <1/2>` with either 1 or 2 to specify the SCD (Slowly Changing Dimension) type:
+   - Replace `<CHANGE_HERE: 1/2>` with either 1 or 2 to specify the SCD (Slowly Changing Dimension) type:
      - Type 1: Overwrites the old value with the new value
      - Type 2: Maintains history by creating new records for each change
 
