@@ -344,7 +344,13 @@ def create_notebook_content(dlt_codes, selected_language):
         {
             "cell_type": "markdown",
             "metadata": {},
-            "source": [f"# Databricks DLT Pipeline Code\n\nThis notebook contains the DLT pipeline code for creating bronze tables in {selected_language.upper()}."]
+            "source": [f"""# Databricks DLT Pipeline Code
+
+This notebook contains the DLT pipeline code for creating bronze tables in {selected_language.upper()}.
+
+## Learn More
+- [Streaming Tables Documentation](https://docs.databricks.com/aws/en/dlt/streaming-tables) - Learn about streaming tables and their use cases for data ingestion and low-latency streaming transformations.
+- [Materialized Views Documentation](https://docs.databricks.com/aws/en/dlt/materialized-views) - Understand how materialized views work and their benefits for incremental data processing."""]
         }
     ]
     
