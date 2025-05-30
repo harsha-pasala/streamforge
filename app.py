@@ -160,8 +160,8 @@ def generate_dlt_references(schema, output_path, table_type):
         
         # SQL DLT code for change feed
         sql_code = f'''
--- Create streaming view for change feed
-CREATE OR REFRESH STREAMING VIEW {table_name}_view
+-- Create streaming table for raw data
+CREATE OR REFRESH STREAMING TABLE {table_name}_base
 AS SELECT * FROM STREAM read_files("{output_path}/", format => "csv");
 
 -- Create streaming table
@@ -169,26 +169,26 @@ CREATE OR REFRESH STREAMING TABLE {table_name};
 
 -- Apply changes using SCD Type 2
 APPLY CHANGES INTO {table_name}
-FROM {table_name}_view
+FROM STREAM({table_name}_base)
 KEYS ({', '.join(keys)})
 SEQUENCE BY {sequence_by}
 STORED AS SCD TYPE 2;
 '''
         
         # Python DLT code for change feed
-        python_code = f'''@dlt.view(name="{table_name}_view")
+        python_code = f'''@dlt.table(name="{table_name}_base")
 def source():
     return (spark.readStream
         .format("cloudFiles")
-        .option("cloudFile.format", "csv")
+        .option("cloudFiles.format", "csv")
         .load("{output_path}/")
     )
 
 dlt.create_streaming_table("{table_name}")
 
-dlt.apply_changes_into(
+dlt.apply_changes(
     target="{table_name}",
-    source="{table_name}_view",
+    source="{table_name}_base",
     keys={keys},
     sequence_by="{sequence_by}",
     stored_as_scd_type=2
@@ -197,7 +197,12 @@ dlt.apply_changes_into(
     else:  # fact or dimension
         constraint_lines = []
         for c in quality_constraints:
-            constraint_lines.append(f"CONSTRAINT {c['name']} EXPECT ({c['condition']}) ON VIOLATION {c['action'].upper()}")
+            if c['action'] == 'warn':
+                constraint_lines.append(f"CONSTRAINT {c['name']} EXPECT ({c['condition']})")
+            elif c['action'] == 'drop':
+                constraint_lines.append(f"CONSTRAINT {c['name']} EXPECT ({c['condition']}) ON VIOLATION DROP ROW")
+            elif c['action'] == 'fail':
+                constraint_lines.append(f"CONSTRAINT {c['name']} EXPECT ({c['condition']}) ON VIOLATION FAIL UPDATE")
         constraints_sql = f"(\n{', '.join(constraint_lines)}\n)" if quality_constraints else ""
         
         # SQL DLT code for regular tables
@@ -207,12 +212,21 @@ AS SELECT * FROM STREAM read_files("{output_path}/", format => "csv")
 '''
         
         # Python DLT code for regular tables
+        python_constraints = []
+        for c in quality_constraints:
+            if c['action'] == 'warn':
+                python_constraints.append(f'@dlt.expect("{c["name"]}", "{c["condition"]}")')
+            elif c['action'] == 'drop':
+                python_constraints.append(f'@dlt.expect_or_drop("{c["name"]}", "{c["condition"]}")')
+            elif c['action'] == 'fail':
+                python_constraints.append(f'@dlt.expect_or_fail("{c["name"]}", "{c["condition"]}")')
+        
         python_code = f'''@dlt.table(name="{table_name}_bronze")
-{chr(10).join([f'@dlt.expect("{c["name"]}", "{c["condition"]}", mode="{c["action"]}")' for c in quality_constraints])}
+{chr(10).join(python_constraints)}
 def {table_name}_bronze():
     return (spark.readStream
         .format("cloudFiles")
-        .option("cloudFile.format", "csv")
+        .option("cloudFiles.format", "csv")
         .load("{output_path}/")
     )
 '''
@@ -350,26 +364,37 @@ def create_notebook_content(dlt_codes, selected_language):
             }
         ])
     
+    # Set kernel based on selected language
+    kernel_spec = {
+        "python": {
+            "display_name": "Python 3",
+            "language": "python",
+            "name": "python3"
+        },
+        "sql": {
+            "display_name": "SQL",
+            "language": "sql",
+            "name": "sql"
+        }
+    }
+    
     notebook = {
         "cells": cells,
         "metadata": {
-            "kernelspec": {
-                "display_name": "Python 3",
-                "language": "python",
-                "name": "python3"
-            },
+            "kernelspec": kernel_spec[selected_language],
             "language_info": {
                 "codemirror_mode": {
-                    "name": "ipython",
+                    "name": "ipython" if selected_language == "python" else "sql",
                     "version": 3
                 },
-                "file_extension": ".py",
-                "mimetype": "text/x-python",
-                "name": "python",
-                "nbconvert_exporter": "python",
-                "pygments_lexer": "ipython3",
+                "file_extension": ".py" if selected_language == "python" else ".sql",
+                "mimetype": "text/x-python" if selected_language == "python" else "text/x-sql",
+                "name": selected_language,
+                "nbconvert_exporter": "python" if selected_language == "python" else "sql",
+                "pygments_lexer": "ipython3" if selected_language == "python" else "sql",
                 "version": "3.8.0"
-            }
+            },
+            "default_language": selected_language
         },
         "nbformat": 4,
         "nbformat_minor": 4
@@ -540,19 +565,19 @@ app.layout = html.Div([
 
 # Callbacks
 @app.callback(
-    Output('interval-timer', 'disabled'),
-    Output('status-display', 'children'),
-    Output('control-button', 'children'),
-    Output('control-button', 'style'),
-    Output('dlt-code-display', 'children'),
-    Output('dlt-code-section', 'style'),
-    Output('export-button-container', 'style'),
-    Input('control-button', 'n_clicks'),
-    Input('interval-timer', 'n_intervals'),
-    Input('language-dropdown', 'value'),
-    State('industry-dropdown', 'value'),
-    State('path-input', 'value'),
-    State('dlt-code-section', 'style'),
+    [Output('interval-timer', 'disabled'),
+     Output('status-display', 'children'),
+     Output('control-button', 'children'),
+     Output('control-button', 'style'),
+     Output('dlt-code-display', 'children'),
+     Output('dlt-code-section', 'style'),
+     Output('export-button-container', 'style')],
+    [Input('control-button', 'n_clicks'),
+     Input('interval-timer', 'n_intervals')],
+    [State('language-dropdown', 'value'),
+     State('industry-dropdown', 'value'),
+     State('path-input', 'value'),
+     State('dlt-code-section', 'style')],
     prevent_initial_call=True
 )
 def control_generation(button_clicks, n_intervals, selected_language, selected_industry, path_input, current_section_style):
@@ -627,6 +652,7 @@ def control_generation(button_clicks, n_intervals, selected_language, selected_i
             status['start_time'] = None
             section_style['display'] = 'none'
             export_button_style['display'] = 'none'
+            
             return True, "Stopped.", "Start", start_style, None, section_style, export_button_style
 
     elif trigger == 'interval-timer':
@@ -640,16 +666,19 @@ def control_generation(button_clicks, n_intervals, selected_language, selected_i
             status['start_time'] = None
             section_style['display'] = 'none'
             export_button_style['display'] = 'none'
+            
             return True, "Generation stopped after 1 hour.", "Start", start_style, None, section_style, export_button_style
         
         try:
             generate_files_for_industry(status["industry"])
+            
         except Exception as e:
             status["running"] = False
             status["industry"] = None
             status['start_time'] = None
             section_style['display'] = 'none'
             export_button_style['display'] = 'none'
+            
             return True, html.Div([
                 html.Span(f"⚠️ {str(e)}", 
                          style={'color': '#FF3621'})
@@ -686,16 +715,6 @@ def control_generation(button_clicks, n_intervals, selected_language, selected_i
         print("\nSubsequent iteration - using stored code")
         section_style['display'] = 'block'
         export_button_style['display'] = 'block' if status['dlt_code'] else 'none'
-        return False, f"Generating files for '{status['industry']}'...", "Stop", stop_style, create_dlt_code_display(status['dlt_code'], selected_language), section_style, export_button_style
-
-    elif trigger == 'language-dropdown':
-        if not status['dlt_code']:
-            raise dash.exceptions.PreventUpdate
-        
-        # Maintain current section visibility and export button state
-        export_button_style['display'] = 'block' if status['dlt_code'] else 'none'
-        
-        # Simply update the display with the stored code for the new language
         return False, f"Generating files for '{status['industry']}'...", "Stop", stop_style, create_dlt_code_display(status['dlt_code'], selected_language), section_style, export_button_style
 
     raise dash.exceptions.PreventUpdate
