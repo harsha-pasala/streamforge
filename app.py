@@ -158,25 +158,27 @@ def generate_dlt_references(schema, output_path, table_type):
         keys = dlt_config.get("keys", ["key"])  # Default to ["key"] if not specified
         sequence_by = dlt_config.get("sequence_by", "change_timestamp")  # Default to change_timestamp if not specified
         
-        # SQL DLT code for change feed
+        # SQL DLT code for change feed - using full catalog.schema format for change feeds
         sql_code = f'''
 -- Create streaming table for raw data
-CREATE OR REFRESH STREAMING TABLE {table_name}_base
-AS SELECT * FROM STREAM read_files("{output_path}/", format => "csv");
+CREATE OR REFRESH STREAMING TABLE <CHANGE_HERE: catalog>.<CHANGE_HERE: schema>.{table_name}_base
+AS SELECT * FROM STREAM read_files("{output_path}/", format => "csv")
+COMMENT '<CHANGE_HERE: enter_table_comment>';
 
 -- Create streaming table
-CREATE OR REFRESH STREAMING TABLE {table_name};
+CREATE OR REFRESH STREAMING TABLE <CHANGE_HERE: catalog>.<CHANGE_HERE: schema>.{table_name}
+COMMENT '<CHANGE_HERE: enter_table_comment>';
 
--- Apply changes using SCD Type 2
-APPLY CHANGES INTO {table_name}
-FROM STREAM({table_name}_base)
+-- Apply changes using SCD
+APPLY CHANGES INTO <CHANGE_HERE: catalog>.<CHANGE_HERE: schema>.{table_name}
+FROM STREAM(<CHANGE_HERE: catalog>.<CHANGE_HERE: schema>.{table_name}_base)
 KEYS ({', '.join(keys)})
 SEQUENCE BY {sequence_by}
-STORED AS SCD TYPE 2;
+STORED AS SCD TYPE <CHANGE_HERE: 1/2>;
 '''
         
-        # Python DLT code for change feed
-        python_code = f'''@dlt.table(name="{table_name}_base")
+        # Python DLT code for change feed - using full catalog.schema format for change feeds
+        python_code = f'''@dlt.table(name="<CHANGE_HERE: catalog>.<CHANGE_HERE: schema>.{table_name}_base")
 def source():
     return (spark.readStream
         .format("cloudFiles")
@@ -184,17 +186,20 @@ def source():
         .load("{output_path}/")
     )
 
-dlt.create_streaming_table("{table_name}")
+dlt.create_streaming_table(
+    name="<CHANGE_HERE: catalog>.<CHANGE_HERE: schema>.{table_name}",
+    comment="<CHANGE_HERE: enter_table_comment>"
+)
 
 dlt.apply_changes(
-    target="{table_name}",
-    source="{table_name}_base",
+    target="<CHANGE_HERE: catalog>.<CHANGE_HERE: schema>.{table_name}",
+    source="<CHANGE_HERE: catalog>.<CHANGE_HERE: schema>.{table_name}_base",
     keys={keys},
     sequence_by="{sequence_by}",
-    stored_as_scd_type=2
+    stored_as_scd_type=<CHANGE_HERE: 1/2>
 )
 '''
-    else:  # fact or dimension
+    else:  # fact or dimension - using simpler schema.table format
         constraint_lines = []
         for c in quality_constraints:
             if c['action'] == 'warn':
@@ -205,13 +210,14 @@ dlt.apply_changes(
                 constraint_lines.append(f"CONSTRAINT {c['name']} EXPECT ({c['condition']}) ON VIOLATION FAIL UPDATE")
         constraints_sql = f"(\n{', '.join(constraint_lines)}\n)" if quality_constraints else ""
         
-        # SQL DLT code for regular tables
+        # SQL DLT code for regular tables - using simpler schema.table format
         sql_code = f'''
-CREATE OR REFRESH STREAMING TABLE {table_name}_bronze{constraints_sql}
+CREATE OR REFRESH STREAMING TABLE <CHANGE_HERE: schema>.{table_name}_bronze{constraints_sql}
 AS SELECT * FROM STREAM read_files("{output_path}/", format => "csv")
+COMMENT '<CHANGE_HERE: enter_table_comment>'
 '''
         
-        # Python DLT code for regular tables
+        # Python DLT code for regular tables - using simpler schema.table format
         python_constraints = []
         for c in quality_constraints:
             if c['action'] == 'warn':
@@ -221,7 +227,7 @@ AS SELECT * FROM STREAM read_files("{output_path}/", format => "csv")
             elif c['action'] == 'fail':
                 python_constraints.append(f'@dlt.expect_or_fail("{c["name"]}", "{c["condition"]}")')
         
-        python_code = f'''@dlt.table(name="{table_name}_bronze")
+        python_code = f'''@dlt.table(name="<CHANGE_HERE: schema>.{table_name}_bronze")
 {chr(10).join(python_constraints)}
 def {table_name}_bronze():
     return (spark.readStream
@@ -344,11 +350,54 @@ def create_notebook_content(dlt_codes, selected_language):
         {
             "cell_type": "markdown",
             "metadata": {},
-            "source": [f"""# Databricks DLT Pipeline Code
+            "source": [f"""### Databricks DLT Pipeline Code
 
 This notebook contains the DLT pipeline code for creating bronze tables in {selected_language.upper()}.
 
-## Learn More
+#### Action Items
+Look for these placeholders in the code and replace them with your values:
+
+1. Table Location:
+   - `CHANGE_HERE: <catalog>.<schema>` - Replace with your Unity Catalog and schema names
+   - `CHANGE_HERE: <schema>` - Replace with your schema name
+   - Or use just the table name to use default catalog and schema
+
+2. Table Documentation:
+   - `CHANGE_HERE: <enter_table_comment>` - Add a descriptive comment about the table
+
+3. Change Feed Configuration:
+   - `CHANGE_HERE: <1/2>` - Choose SCD type (1 or 2)
+
+#### Table Naming Instructions
+Before running the code, you need to specify where your tables will be stored. You can use any of these three formats:
+
+1. Three level catalog.schema.table format:
+   - Replace `CHANGE_HERE: <catalog>.<schema>` with your Unity Catalog and schema names
+   - Example: `unity_catalog.my_schema.table_name`
+
+2. Two level schema.table format:
+   - Replace `CHANGE_HERE: <schema>` with your schema name
+   - The default catalog will be used
+   - Example: `my_schema.table_name`
+
+3. Simple table name format:
+   - Use just the table name
+   - Both default catalog and schema will be used
+   - Example: `table_name`
+
+#### Table Documentation and Configuration
+For each table in the code:
+
+1. Table Comments:
+   - Replace `CHANGE_HERE: <enter_table_comment>` with a descriptive comment about the table's purpose and contents
+   - Example: "Bronze table containing raw customer transaction data"
+
+2. For Change Feed Tables:
+   - Replace `CHANGE_HERE: <1/2>` with either 1 or 2 to specify the SCD (Slowly Changing Dimension) type:
+     - Type 1: Overwrites the old value with the new value
+     - Type 2: Maintains history by creating new records for each change
+
+#### Learn More
 - [Streaming Tables Documentation](https://docs.databricks.com/aws/en/dlt/streaming-tables) - Learn about streaming tables and their use cases for data ingestion and low-latency streaming transformations.
 - [Materialized Views Documentation](https://docs.databricks.com/aws/en/dlt/materialized-views) - Understand how materialized views work and their benefits for incremental data processing."""]
         }
@@ -359,7 +408,7 @@ This notebook contains the DLT pipeline code for creating bronze tables in {sele
             {
                 "cell_type": "markdown",
                 "metadata": {},
-                "source": [f"## Table: {code['table']}"]
+                "source": [f"#### Table: {code['table']}"]
             },
             {
                 "cell_type": "code",
