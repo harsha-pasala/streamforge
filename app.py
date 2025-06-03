@@ -196,7 +196,7 @@ dlt.apply_changes(
     source="<CHANGE_HERE: catalog>.<CHANGE_HERE: schema>.{table_name}_base",
     keys={keys},
     sequence_by="{sequence_by}",
-    stored_as_scd_type=<CHANGE_HERE: 1/2>
+    stored_as_scd_type="<CHANGE_HERE: 1/2>"
 )
 '''
     else:  # fact or dimension - using simpler schema.table format
