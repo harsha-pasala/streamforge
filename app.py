@@ -702,7 +702,7 @@ def control_generation(button_clicks, n_intervals, selected_language, selected_i
         if not status["running"] or not status["industry"]:
             raise dash.exceptions.PreventUpdate
         
-        if status['start_time'] and (time.time() - status['start_time']) > 3600:  # 1 hour limit
+        if status['start_time'] and (time.time() - status['start_time']) > (3600 * 4):  # 4 hour limit
             print("\nTime limit reached...")
             status["running"] = False
             status["industry"] = None

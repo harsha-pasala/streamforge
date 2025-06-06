@@ -146,12 +146,17 @@ class BaseGenerator(ABC):
     
     def _generate_value(self, col, col_def):
         """Base method for generating values based on data type."""
-        if isinstance(col_def, str):
-            dtype = col_def
-            format_spec = None
-        else:
+        # Check for null probability first
+        if isinstance(col_def, dict):
+            null_prob = col_def.get('null_probability', 0.0)
+            if random.random() < null_prob:
+                return None
+            
             dtype = col_def.get('type', 'string')
             format_spec = col_def.get('format')
+        else:
+            dtype = col_def
+            format_spec = None
             
         col_lower = col.lower()
         
@@ -184,7 +189,6 @@ class BaseGenerator(ABC):
             elif 'zip' in col_lower:
                 return self.fake.zipcode()
             elif 'contact' in col_lower and 'number' in col_lower:
-                # Generate a standard 10-digit phone number
                 return f"({self.fake.random_number(digits=3)}) {self.fake.random_number(digits=3)}-{self.fake.random_number(digits=4)}"
             elif 'email' in col_lower:
                 return self.fake.email()
