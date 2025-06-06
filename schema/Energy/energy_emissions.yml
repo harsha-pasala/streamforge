@@ -1,0 +1,40 @@
+table: energy_emissions
+type: fact
+num_rows: 1000
+columns:
+  plant_id:
+    type: int
+    null_probability: 0.0  # primary identifier should never be null
+  co2_emission_tonnes:
+    type: float
+    null_probability: 0.05  # 5% chance of being null
+  measurement_date:
+    type: datetime
+    null_probability: 0.0  # timestamps should generally not be null
+  fuel_type:
+    type: string
+    format: "natural_gas|coal|biomass|solar|wind"
+    null_probability: 0.02  # 2% chance of being null
+  region:
+    type: string
+    format: "NORTH|SOUTH|EAST|WEST|CENTRAL"
+    null_probability: 0.03  # 3% chance of being null
+  operational_status:
+    type: string
+    format: "operational|maintenance|offline"
+    null_probability: 0.01  # 1% chance of being null
+  temperature_celsius:
+    type: float
+    null_probability: 0.08  # 8% chance of being null
+data_quality_rules:
+  plant_id:
+    min_value: 1
+    max_value: 100
+  co2_emission_tonnes:
+    min_value: 0
+    max_value: 500
+    anomaly_percentage: 0.03
+  temperature_celsius:
+    min_value: -40
+    max_value: 60
+    anomaly_percentage: 0.035 
