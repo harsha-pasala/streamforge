@@ -7,6 +7,9 @@ import json
 import logging
 from data_generators import DimensionGenerator, FactGenerator, ChangeFeedGenerator, BaseGenerator
 from dash.dependencies import ClientsideFunction
+from threading import Thread
+import threading
+from flask import jsonify
 
 # Set up logging
 logging.basicConfig(level=logging.INFO)
@@ -73,12 +76,71 @@ status = {
     "iteration_count": 0,
     "start_time": None,
     "dlt_code": None,
-    "output_path": None
+    "output_path": None,
+    "thread": None,
+    "lock": threading.Lock(),
+    "selected_language": None,
+    "selected_industry": None,
+    "path_input": None
 }
+
+def generation_service():
+    """Background service that runs file generation."""
+    while status["running"]:
+        try:
+            with status["lock"]:
+                if not status["running"]:
+                    break
+                generate_files_for_industry(status["industry"])
+        except Exception as e:
+            logger.error(f"Error in generation service: {str(e)}")
+            with status["lock"]:
+                status["running"] = False
+                status["thread"] = None
+            break
+        time.sleep(15)  # Wait 15 seconds between iterations
+
+def start_generation_thread():
+    """Start the generation thread if it's not already running."""
+    with status["lock"]:
+        if status["thread"] is None:
+            status["thread"] = Thread(target=generation_service)
+            status["thread"].start()
+
+def stop_generation_thread():
+    """Stop the generation thread if it's running."""
+    with status["lock"]:
+        if status["thread"]:
+            print("Stopping background thread...")
+            status["running"] = False
+            status["thread"].join(timeout=5)  # Wait up to 5 seconds for thread to finish
+            status["thread"] = None
+            # Reset all state
+            status["industry"] = None
+            status["iteration_count"] = 0
+            status["start_time"] = None
+            status["dlt_code"] = None
+            status["output_path"] = None
+            print("Background thread stopped and state reset")
 
 # Initialize Dash app
 app = dash.Dash(__name__)
 server = app.server
+
+# Add state endpoint
+@app.server.route('/api/state')
+def get_state():
+    """Endpoint to check the current state."""
+    with status["lock"]:
+        return jsonify({
+            "running": status["running"],
+            "industry": status["industry"],
+            "iteration_count": status["iteration_count"],
+            "dlt_code": status["dlt_code"],
+            "selected_language": status["selected_language"],
+            "selected_industry": status["selected_industry"],
+            "path_input": status["path_input"]
+        })
 
 # Add custom CSS for Inter font and Font Awesome
 app.index_string = '''
@@ -479,6 +541,7 @@ def create_input_section():
                 dcc.Input(
                     id='path-input',
                     type='text',
+                    value='',
                     placeholder='Path to volume E.g./Volumes/path/to/stream/',
                     style={
                         'width': '412px',
@@ -494,6 +557,7 @@ def create_input_section():
                 dcc.Dropdown(
                     id='industry-dropdown',
                     options=[{"label": i, "value": i} for i in list_industries()],
+                    value=None,
                     placeholder="Choose industry",
                     style={
                         'border': f'1px solid {DB_COLORS["border"]}',
@@ -511,6 +575,7 @@ def create_input_section():
                         {"label": "SQL", "value": "sql"},
                         {"label": "Python", "value": "python"}
                     ],
+                    value=None,
                     placeholder="Choose language",
                     style={
                         'border': f'1px solid {DB_COLORS["border"]}',
@@ -599,7 +664,9 @@ app.layout = html.Div([
     create_header(),
     create_input_section(),
     create_code_section(),
-    dcc.Interval(id='interval-timer', interval=15000, n_intervals=0, disabled=True)
+    dcc.Interval(id='interval-timer', interval=15000, n_intervals=0, disabled=True),
+    # Add hidden div for initial state check
+    html.Div(id='initial-state-trigger', style={'display': 'none'})
 ], style={
     'backgroundColor': '#F8F9FA',
     'minHeight': '100vh',
@@ -620,10 +687,11 @@ app.layout = html.Div([
     [State('language-dropdown', 'value'),
      State('industry-dropdown', 'value'),
      State('path-input', 'value'),
-     State('dlt-code-section', 'style')],
+     State('dlt-code-section', 'style'),
+     State('dlt-code-display', 'children')],
     prevent_initial_call=True
 )
-def control_generation(button_clicks, n_intervals, selected_language, selected_industry, path_input, current_section_style):
+def control_generation(button_clicks, n_intervals, selected_language, selected_industry, path_input, current_section_style, current_display):
     global dimension_key_ranges, status
     
     ctx = dash.callback_context
@@ -634,6 +702,15 @@ def control_generation(button_clicks, n_intervals, selected_language, selected_i
     print(f"\nTrigger: {trigger}")
     print(f"Current iteration: {status['iteration_count']}")
     print(f"Current DLT code: {status['dlt_code'] is not None}")
+
+    # Update UI state
+    with status["lock"]:
+        if selected_language:
+            status["selected_language"] = selected_language
+        if selected_industry:
+            status["selected_industry"] = selected_industry
+        if path_input:
+            status["path_input"] = path_input
 
     # Default section style
     section_style = current_section_style if current_section_style else {**STYLES['container'], 'display': 'none'}
@@ -651,6 +728,7 @@ def control_generation(button_clicks, n_intervals, selected_language, selected_i
     start_style = {**STYLES['button'], 'backgroundColor': DB_COLORS['success']}
     stop_style = {**STYLES['button'], 'backgroundColor': DB_COLORS['primary']}
 
+    # Handle control button and interval timer
     if trigger == 'control-button':
         if not status["running"]:  # Start button was clicked
             if not path_input:
@@ -673,13 +751,17 @@ def control_generation(button_clicks, n_intervals, selected_language, selected_i
             
             try:
                 print("\nStarting generation...")
-                status['iteration_count'] = 0
-                status['start_time'] = time.time()
-                status['dlt_code'] = None
-                status['output_path'] = path_input
-                dimension_key_ranges = {}
-                status["running"] = True
-                status["industry"] = selected_industry
+                with status["lock"]:
+                    status['iteration_count'] = 0
+                    status['start_time'] = time.time()
+                    status['dlt_code'] = None
+                    status['output_path'] = path_input
+                    dimension_key_ranges = {}
+                    status["running"] = True
+                    status["industry"] = selected_industry
+                
+                # Start the generation thread
+                start_generation_thread()
                 
                 section_style['display'] = 'block'
                 return False, f"Generating files for '{selected_industry}'...", "Stop", stop_style, loading_message, section_style, export_button_style
@@ -690,75 +772,73 @@ def control_generation(button_clicks, n_intervals, selected_language, selected_i
                 ], style={'padding': '12px'}), "Start", start_style, None, section_style, export_button_style
         else:  # Stop button was clicked
             print("\nStopping generation...")
-            status["running"] = False
-            status["industry"] = None
-            status['start_time'] = None
+            stop_generation_thread()
+            
+            # Reset UI state
             section_style['display'] = 'none'
             export_button_style['display'] = 'none'
             
-            return True, "Stopped.", "Start", start_style, None, section_style, export_button_style
+            # Force UI update with current DLT code if available
+            final_display = None
+            if status['dlt_code']:
+                try:
+                    final_display = create_dlt_code_display(status['dlt_code'], selected_language)
+                except Exception as e:
+                    logger.error(f"Error creating final display: {str(e)}")
+                    final_display = None
+            
+            return True, "Stopped.", "Start", start_style, final_display, section_style, export_button_style
 
     elif trigger == 'interval-timer':
-        if not status["running"] or not status["industry"]:
-            raise dash.exceptions.PreventUpdate
-        
-        if status['start_time'] and (time.time() - status['start_time']) > (3600 * 4):  # 4 hour limit
-            print("\nTime limit reached...")
-            status["running"] = False
-            status["industry"] = None
-            status['start_time'] = None
-            section_style['display'] = 'none'
-            export_button_style['display'] = 'none'
+        with status["lock"]:
+            if not status["running"] or not status["industry"]:
+                # If generation is not running, disable the interval timer and reset state
+                stop_generation_thread()  # Ensure thread is stopped
+                return True, dash.no_update, dash.no_update, dash.no_update, dash.no_update, dash.no_update, dash.no_update
             
-            return True, "Generation stopped after 1 hour.", "Start", start_style, None, section_style, export_button_style
-        
-        try:
-            generate_files_for_industry(status["industry"])
-            
-        except Exception as e:
-            status["running"] = False
-            status["industry"] = None
-            status['start_time'] = None
-            section_style['display'] = 'none'
-            export_button_style['display'] = 'none'
-            
-            return True, html.Div([
-                html.Span(f"⚠️ {str(e)}", 
-                         style={'color': '#FF3621'})
-            ], style={'padding': '12px'}), "Start", start_style, None, section_style, export_button_style
-        
-        if status['iteration_count'] == 1 and status['dlt_code'] is None:
-            print("\nGenerating DLT code...")
-            try:
-                schemas = load_all_schemas(status["industry"])
-                dlt_codes = []
-                for schema in schemas:
-                    table_type = schema.get("type", "fact")
-                    if table_type in ["dimension", "fact", "change_feed"]:
-                        table = schema["table"]
-                        output_path = os.path.join(status['output_path'], status["industry"], table)
-                        code = generate_dlt_references(schema, output_path, table_type)
-                        print(f"Generated code for table: {table} (type: {table_type})")
-                        dlt_codes.append({
-                            "table": table,
-                            "code": code
-                        })
+            if status['start_time'] and (time.time() - status['start_time']) > 3600:  # 1 hour limit
+                print("\nTime limit reached...")
+                stop_generation_thread()
                 
-                status['dlt_code'] = dlt_codes
-                print(f"Stored DLT code: {status['dlt_code'] is not None}")
-                section_style['display'] = 'block'
-                export_button_style['display'] = 'block'
-                return False, f"Generating files for '{status['industry']}'...", "Stop", stop_style, create_dlt_code_display(dlt_codes, selected_language), section_style, export_button_style
-            except Exception as e:
-                print(f"Error generating DLT code: {str(e)}")
-                section_style['display'] = 'block'
+                # Reset UI state
+                section_style['display'] = 'none'
                 export_button_style['display'] = 'none'
-                return False, f"Generating files for '{status['industry']}'...", "Stop", stop_style, loading_message, section_style, export_button_style
-        
-        print("\nSubsequent iteration - using stored code")
-        section_style['display'] = 'block'
-        export_button_style['display'] = 'block' if status['dlt_code'] else 'none'
-        return False, f"Generating files for '{status['industry']}'...", "Stop", stop_style, create_dlt_code_display(status['dlt_code'], selected_language), section_style, export_button_style
+                
+                return True, "Generation stopped after 1 hour.", "Start", start_style, None, section_style, export_button_style
+            
+            # Check if DLT code needs to be generated
+            if status['iteration_count'] == 1 and status['dlt_code'] is None:
+                print("\nGenerating DLT code...")
+                try:
+                    schemas = load_all_schemas(status["industry"])
+                    dlt_codes = []
+                    for schema in schemas:
+                        table_type = schema.get("type", "fact")
+                        if table_type in ["dimension", "fact", "change_feed"]:
+                            table = schema["table"]
+                            output_path = os.path.join(status['output_path'], status["industry"], table)
+                            code = generate_dlt_references(schema, output_path, table_type)
+                            print(f"Generated code for table: {table} (type: {table_type})")
+                            dlt_codes.append({
+                                "table": table,
+                                "code": code
+                            })
+                    
+                    status['dlt_code'] = dlt_codes
+                    print(f"Stored DLT code: {status['dlt_code'] is not None}")
+                    section_style['display'] = 'block'
+                    export_button_style['display'] = 'block'
+                    return False, f"Generating files for '{status['industry']}'...", "Stop", stop_style, create_dlt_code_display(dlt_codes, selected_language), section_style, export_button_style
+                except Exception as e:
+                    print(f"Error generating DLT code: {str(e)}")
+                    section_style['display'] = 'block'
+                    export_button_style['display'] = 'none'
+                    return False, f"Generating files for '{status['industry']}'...", "Stop", stop_style, loading_message, section_style, export_button_style
+            
+            print("\nSubsequent iteration - using stored code")
+            section_style['display'] = 'block'
+            export_button_style['display'] = 'block' if status['dlt_code'] else 'none'
+            return False, f"Generating files for '{status['industry']}'...", "Stop", stop_style, create_dlt_code_display(status['dlt_code'], selected_language), section_style, export_button_style
 
     raise dash.exceptions.PreventUpdate
 
@@ -791,6 +871,43 @@ def update_export_button(code_display):
     if not code_display or isinstance(code_display, str):
         return True
     return False
+
+# Add callback for initial state check
+@app.callback(
+    [Output('initial-state-trigger', 'children'),
+     Output('language-dropdown', 'value'),
+     Output('industry-dropdown', 'value'),
+     Output('path-input', 'value')],
+    Input('initial-state-trigger', 'children'),
+    prevent_initial_call=False  # Allow initial call
+)
+def trigger_initial_state_check(_):
+    """Return current state values on page load."""
+    with status["lock"]:
+        return [
+            'triggered',
+            status["selected_language"],
+            status["selected_industry"],
+            status["path_input"]
+        ]
+
+# Add separate callback for language dropdown
+@app.callback(
+    Output('dlt-code-display', 'children', allow_duplicate=True),
+    Input('language-dropdown', 'value'),
+    State('dlt-code-display', 'children'),
+    prevent_initial_call=True
+)
+def update_code_display(language, current_display):
+    """Update code display when language changes."""
+    if not language or not status['dlt_code']:
+        return dash.no_update
+    
+    try:
+        return create_dlt_code_display(status['dlt_code'], language)
+    except Exception as e:
+        logger.error(f"Error updating code display: {str(e)}")
+        return current_display
 
 if __name__ == "__main__":
     app.run(debug=True)
