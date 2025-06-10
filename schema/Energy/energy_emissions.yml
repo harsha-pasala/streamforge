@@ -27,9 +27,6 @@ columns:
     type: float
     null_probability: 0.08  # 8% chance of being null
 data_quality_rules:
-  plant_id:
-    min_value: 1
-    max_value: 100
   co2_emission_tonnes:
     min_value: 0
     max_value: 500

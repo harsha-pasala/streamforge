@@ -1,6 +1,13 @@
 table: maintenance_records
 type: fact
 num_rows: 100
+data_quality_rules:
+  cost:
+    min_value: 0
+    max_value: 100000  # Adding a reasonable max value for generation
+    anomaly_percentage: 0.15  # 15% of values will be outside this range
+    description: "Cost should be between 0 and 100,000"
+    action: "DROP"
 columns:
   maintenance_id: int
   equipment_id: int

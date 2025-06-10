@@ -1,6 +1,11 @@
 table: technicians
 type: dimension
 num_rows: 50
+data_quality_rules:
+  technician_id:
+    not_null: true
+    description: "Primary key should never be null"
+    action: "fail"
 columns:
   technician_id: int
   technician_name: 

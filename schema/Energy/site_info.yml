@@ -1,6 +1,11 @@
 table: site_info
 type: dimension
 num_rows: 100
+data_quality_rules:
+  plant_id:
+    not_null: true
+    description: "Primary key should never be null"
+    action: "fail"
 columns:
   plant_id: int
   plant_name: 

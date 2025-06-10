@@ -201,6 +201,25 @@ def generate_dlt_references(schema, output_path, table_type):
     quality_constraints = []
     if table_type in ['fact', 'dimension'] and 'data_quality_rules' in schema:
         for column, rules in schema['data_quality_rules'].items():
+            # Handle NOT NULL constraints
+            if rules.get('not_null'):
+                constraint_name = f"not_null_{column}"
+                constraint_condition = f"{column} IS NOT NULL"
+                
+                # Validate action is one of the allowed values
+                action = rules.get('action', 'warn').lower()
+                if action not in ['warn', 'drop', 'fail']:
+                    logger.warning(f"Invalid action '{action}' for column {column}. Defaulting to 'warn'.")
+                    action = 'warn'
+                
+                quality_constraints.append({
+                    'name': constraint_name,
+                    'condition': constraint_condition,
+                    'description': rules.get('description', f'{column} should not be null'),
+                    'action': action
+                })
+            
+            # Handle min/max value constraints
             if 'min_value' in rules and 'max_value' in rules:
                 constraint_name = f"valid_{column}"
                 constraint_condition = f"{column} BETWEEN {rules['min_value']} AND {rules['max_value']}"

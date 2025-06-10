@@ -1,6 +1,11 @@
 table: equipment
 type: dimension
 num_rows: 500
+data_quality_rules:
+  equipment_id:
+    not_null: true
+    description: "Primary key should never be null"
+    action: "fail"
 columns:
   equipment_id: int
   equipment_name: 

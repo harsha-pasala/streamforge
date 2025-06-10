@@ -1,6 +1,13 @@
 table: electricity_production
 type: fact
 num_rows: 100
+data_quality_rules:
+  generation_mwh:
+    min_value: 0
+    max_value: 1000  # Adding a reasonable max value for generation
+    anomaly_percentage: 0.15  # 15% of values will be outside this range
+    description: "Electricity generation should be between 0 and 1000 MWh"
+    action: "WARN"
 columns:
   production_id: int
   plant_id: int
