@@ -82,7 +82,8 @@ status = {
     "selected_language": None,
     "selected_industry": None,
     "path_input": None,
-    "selected_dlt_output": None
+    "selected_dlt_output": None,
+    "selected_dlt_mode": None  # Add new state for DLT mode
 }
 
 def generation_service():
@@ -145,7 +146,8 @@ def get_state():
             "selected_language": status["selected_language"],
             "selected_industry": status["selected_industry"],
             "path_input": status["path_input"],
-            "selected_dlt_output": status["selected_dlt_output"]
+            "selected_dlt_output": status["selected_dlt_output"],
+            "selected_dlt_mode": status["selected_dlt_mode"]
         }
         print("Returning state:", state)  # Add debug logging
         return jsonify(state)
@@ -241,6 +243,12 @@ def generate_dlt_references(schema, output_path, table_type):
                     'action': action
                 })
     
+    # Helper function to get table comment based on mode
+    def get_table_comment(layer, table_name, table_type):
+        if status["selected_dlt_mode"] == "full_code":
+            return f"{layer} Streaming Table for {table_name} ({table_type})"
+        return "<CHANGE_HERE: enter_table_comment>"
+    
     if table_type == "change_feed":
         # Get DLT configuration from schema
         dlt_config = schema.get("change_feed_rules", {}).get("dlt_config", {})
@@ -252,18 +260,18 @@ def generate_dlt_references(schema, output_path, table_type):
 -- Create streaming table for raw data
 CREATE OR REFRESH STREAMING TABLE bronze.{table_name}
 AS SELECT * FROM STREAM read_files("{output_path}/", format => "csv")
-COMMENT '<CHANGE_HERE: enter_table_comment>';
+COMMENT '{get_table_comment("Bronze", table_name, "change feed")}';
 
 -- Create streaming table
 CREATE OR REFRESH STREAMING TABLE silver.{table_name}
-COMMENT '<CHANGE_HERE: enter_table_comment>';
+COMMENT '{get_table_comment("Silver", table_name, "change feed")}';
 
 -- Apply changes using SCD
 APPLY CHANGES INTO silver.{table_name}
 FROM STREAM(bronze.{table_name})
 KEYS ({', '.join(keys)})
 SEQUENCE BY {sequence_by}
-STORED AS SCD TYPE <CHANGE_HERE: 1/2>;
+STORED AS SCD TYPE {2 if status["selected_dlt_mode"] == "full_code" else "<CHANGE_HERE: 1/2>"};
 '''
         
         # Python DLT code for change feed - using full catalog.schema format for change feeds
@@ -277,7 +285,7 @@ def source():
 
 dlt.create_streaming_table(
     name="silver.{table_name}",
-    comment="<CHANGE_HERE: enter_table_comment>"
+    comment="{get_table_comment("Silver", table_name, "change feed")}"
 )
 
 dlt.apply_changes(
@@ -285,7 +293,7 @@ dlt.apply_changes(
     source="bronze.{table_name}_base",
     keys={keys},
     sequence_by="{sequence_by}",
-    stored_as_scd_type="<CHANGE_HERE: 1/2>"
+    stored_as_scd_type="{2 if status["selected_dlt_mode"] == "full_code" else "<CHANGE_HERE: 1/2>"}"
 )
 '''
     else:  # fact or dimension tables
@@ -295,7 +303,7 @@ dlt.apply_changes(
             sql_code = f'''
 CREATE OR REFRESH STREAMING TABLE bronze.{table_name}
 AS SELECT * FROM STREAM read_files("{output_path}/", format => "csv")
-COMMENT '<CHANGE_HERE: enter_table_comment>'
+COMMENT '{get_table_comment("Bronze", table_name, table_type)}'
 '''
             # Python code for bronze only
             python_code = f'''@dlt.table(name="bronze.{table_name}")
@@ -323,12 +331,12 @@ def {table_name}():
 -- Create bronze table
 CREATE OR REFRESH STREAMING TABLE bronze.{table_name}
 AS SELECT * FROM STREAM read_files("{output_path}/", format => "csv")
-COMMENT '<CHANGE_HERE: enter_table_comment>';
+COMMENT '{get_table_comment("Bronze", table_name, table_type)}';
 
 -- Create silver table with constraints
 CREATE OR REFRESH STREAMING TABLE silver.{table_name}{constraints_sql}
 AS SELECT * FROM STREAM(bronze.{table_name})
-COMMENT '<CHANGE_HERE: enter_table_comment>'
+COMMENT '{get_table_comment("Silver", table_name, table_type)}'
 '''
 
             # Python code for both bronze and silver
@@ -642,7 +650,8 @@ def create_input_section():
                         'fontSize': '14px',
                         'width': '150px',
                         'display': 'inline-block',
-                        'verticalAlign': 'middle'
+                        'verticalAlign': 'middle',
+                        'marginRight': '12px'
                     }
                 ),
             ], style={'marginBottom': '20px', 'textAlign': 'center'}),
@@ -654,7 +663,25 @@ def create_input_section():
                         {"label": "Bronze and Silver", "value": "bronze_silver"}
                     ],
                     value=None,
-                    placeholder="Choose DLT Output",
+                    placeholder="Choose Medallion Layers",
+                    style={
+                        'border': f'1px solid {DB_COLORS["border"]}',
+                        'borderRadius': '4px',
+                        'fontSize': '14px',
+                        'width': '200px',
+                        'display': 'inline-block',
+                        'verticalAlign': 'middle',
+                        'marginRight': '12px'
+                    }
+                ),
+                dcc.Dropdown(
+                    id='dlt-mode-dropdown',
+                    options=[
+                        {"label": "Full Code", "value": "full_code"},
+                        {"label": "Workshop Mode", "value": "workshop_mode"}
+                    ],
+                    value=None,
+                    placeholder="Choose DLT Mode",
                     style={
                         'border': f'1px solid {DB_COLORS["border"]}',
                         'borderRadius': '4px',
@@ -767,11 +794,12 @@ app.layout = html.Div([
      State('industry-dropdown', 'value'),
      State('path-input', 'value'),
      State('dlt-output-dropdown', 'value'),
+     State('dlt-mode-dropdown', 'value'),
      State('dlt-code-section', 'style'),
      State('dlt-code-display', 'children')],
     prevent_initial_call=True
 )
-def control_generation(button_clicks, n_intervals, selected_language, selected_industry, path_input, selected_dlt_output, current_section_style, current_display):
+def control_generation(button_clicks, n_intervals, selected_language, selected_industry, path_input, selected_dlt_output, selected_dlt_mode, current_section_style, current_display):
     global dimension_key_ranges, status
     
     ctx = dash.callback_context
@@ -793,6 +821,8 @@ def control_generation(button_clicks, n_intervals, selected_language, selected_i
             status["path_input"] = path_input
         if selected_dlt_output:
             status["selected_dlt_output"] = selected_dlt_output
+        if selected_dlt_mode:
+            status["selected_dlt_mode"] = selected_dlt_mode
 
     # Default section style
     section_style = current_section_style if current_section_style else {**STYLES['container'], 'display': 'none'}
@@ -834,6 +864,12 @@ def control_generation(button_clicks, n_intervals, selected_language, selected_i
             if not selected_dlt_output:
                 return True, html.Div([
                     html.Span("⚠️ Please select a DLT Output.", 
+                             style={'color': '#FF3621'})
+                ], style={'padding': '12px'}), "Start", start_style, False, loading_message, section_style, export_button_style
+
+            if not selected_dlt_mode:
+                return True, html.Div([
+                    html.Span("⚠️ Please select a DLT Mode.", 
                              style={'color': '#FF3621'})
                 ], style={'padding': '12px'}), "Start", start_style, False, loading_message, section_style, export_button_style
 
@@ -981,7 +1017,8 @@ def update_export_button(code_display):
      Output('language-dropdown', 'value'),
      Output('industry-dropdown', 'value'),
      Output('path-input', 'value'),
-     Output('dlt-output-dropdown', 'value')],
+     Output('dlt-output-dropdown', 'value'),
+     Output('dlt-mode-dropdown', 'value')],
     Input('initial-state-trigger', 'children'),
     prevent_initial_call=False  # Allow initial call
 )
@@ -994,9 +1031,10 @@ def trigger_initial_state_check(_):
                 status["selected_language"],
                 status["selected_industry"],
                 status["path_input"],
-                status["selected_dlt_output"]
+                status["selected_dlt_output"],
+                status["selected_dlt_mode"]
             ]
-        return ['triggered', '', '', '', '']
+        return ['triggered', '', '', '', '', '']
 
 # Add separate callback for language dropdown
 @app.callback(
