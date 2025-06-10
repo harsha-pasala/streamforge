@@ -19,6 +19,7 @@ window.dash_clientside = Object.assign({}, window.dash_clientside, {
                         if (button) {
                             button.textContent = 'Stop';
                             button.style.backgroundColor = '#FF3621';
+                            button.disabled = false;
                             console.log('Updated button state');
                         }
                         
@@ -44,12 +45,10 @@ window.dash_clientside = Object.assign({}, window.dash_clientside, {
                         }
                     } else {
                         console.log('No active generation found');
-                        // Reset button state
+                        // Enable button when not running
                         const button = document.getElementById('control-button');
                         if (button) {
-                            button.textContent = 'Start';
-                            button.style.backgroundColor = '#00A86B';
-                            console.log('Reset button state to Start');
+                            button.disabled = false;
                         }
                     }
                 })
@@ -70,12 +69,12 @@ window.dash_clientside = Object.assign({}, window.dash_clientside, {
                 return window.dash_clientside.no_update;
             }
 
-            // Return server state
+            // Return state to server
             const state = {
                 running: button_text === 'Stop',
                 industry: industry,
-                iteration_count: 0,  // Will be updated by Python
-                start_time: Date.now(),  // Will be updated by Python
+                iteration_count: 0,
+                start_time: Date.now(),
                 output_path: path,
                 selected_language: language,
                 selected_industry: industry,
@@ -85,4 +84,10 @@ window.dash_clientside = Object.assign({}, window.dash_clientside, {
             return JSON.stringify(state);
         }
     }
+}); 
+
+// Ensure loadInitialState is called on page load
+document.addEventListener('DOMContentLoaded', function() {
+    console.log('DOM loaded, triggering initial state check...');
+    window.dash_clientside.clientside.loadInitialState('page_load');
 }); 

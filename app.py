@@ -104,8 +104,10 @@ def start_generation_thread():
     """Start the generation thread if it's not already running."""
     with status["lock"]:
         if status["thread"] is None:
+            status["running"] = True  # Set running state before starting thread
             status["thread"] = Thread(target=generation_service)
             status["thread"].start()
+            print("Started generation thread, running state:", status["running"])  # Debug log
 
 def stop_generation_thread():
     """Stop the generation thread if it's running."""
@@ -132,7 +134,7 @@ server = app.server
 def get_state():
     """Endpoint to check the current state."""
     with status["lock"]:
-        return jsonify({
+        state = {
             "running": status["running"],
             "industry": status["industry"],
             "iteration_count": status["iteration_count"],
@@ -140,7 +142,9 @@ def get_state():
             "selected_language": status["selected_language"],
             "selected_industry": status["selected_industry"],
             "path_input": status["path_input"]
-        })
+        }
+        print("Returning state:", state)  # Add debug logging
+        return jsonify(state)
 
 # Add custom CSS for Inter font and Font Awesome
 app.index_string = '''
@@ -679,6 +683,7 @@ app.layout = html.Div([
      Output('status-display', 'children'),
      Output('control-button', 'children'),
      Output('control-button', 'style'),
+     Output('control-button', 'disabled'),
      Output('dlt-code-display', 'children'),
      Output('dlt-code-section', 'style'),
      Output('export-button-container', 'style')],
@@ -735,19 +740,19 @@ def control_generation(button_clicks, n_intervals, selected_language, selected_i
                 return True, html.Div([
                     html.Span("⚠️ Please enter a path to the volume.", 
                              style={'color': '#FF3621'})
-                ], style={'padding': '12px'}), "Start", start_style, loading_message, section_style, export_button_style
+                ], style={'padding': '12px'}), "Start", start_style, False, loading_message, section_style, export_button_style
             
             if not selected_industry:
                 return True, html.Div([
                     html.Span("⚠️ Please select an industry.", 
                              style={'color': '#FF3621'})
-                ], style={'padding': '12px'}), "Start", start_style, loading_message, section_style, export_button_style
+                ], style={'padding': '12px'}), "Start", start_style, False, loading_message, section_style, export_button_style
             
             if not selected_language:
                 return True, html.Div([
                     html.Span("⚠️ Please select a language.", 
                              style={'color': '#FF3621'})
-                ], style={'padding': '12px'}), "Start", start_style, loading_message, section_style, export_button_style
+                ], style={'padding': '12px'}), "Start", start_style, False, loading_message, section_style, export_button_style
             
             try:
                 print("\nStarting generation...")
@@ -764,15 +769,28 @@ def control_generation(button_clicks, n_intervals, selected_language, selected_i
                 start_generation_thread()
                 
                 section_style['display'] = 'block'
-                return False, f"Generating files for '{selected_industry}'...", "Stop", stop_style, loading_message, section_style, export_button_style
+                return False, f"Generating files for '{selected_industry}'...", "Stop", stop_style, False, loading_message, section_style, export_button_style
             except Exception as e:
                 return True, html.Div([
                     html.Span(f"⚠️ {str(e)}", 
                              style={'color': '#FF3621'})
-                ], style={'padding': '12px'}), "Start", start_style, None, section_style, export_button_style
+                ], style={'padding': '12px'}), "Start", start_style, False, None, section_style, export_button_style
         else:  # Stop button was clicked
             print("\nStopping generation...")
+            # Disable button immediately and update UI
+            with status["lock"]:
+                status["running"] = False
+                status["thread"] = None
+                status["industry"] = None
+                status["iteration_count"] = 0
+                status["start_time"] = None
+                status["dlt_code"] = None
+                status["output_path"] = None
+            
+            # Stop the background thread
+            print("Stopping background thread...")
             stop_generation_thread()
+            print("Background thread stopped and state reset")
             
             # Reset UI state
             section_style['display'] = 'none'
@@ -787,14 +805,14 @@ def control_generation(button_clicks, n_intervals, selected_language, selected_i
                     logger.error(f"Error creating final display: {str(e)}")
                     final_display = None
             
-            return True, "Stopped.", "Start", start_style, final_display, section_style, export_button_style
+            return True, "Stopped.", "Start", start_style, False, final_display, section_style, export_button_style
 
     elif trigger == 'interval-timer':
         with status["lock"]:
             if not status["running"] or not status["industry"]:
                 # If generation is not running, disable the interval timer and reset state
                 stop_generation_thread()  # Ensure thread is stopped
-                return True, dash.no_update, dash.no_update, dash.no_update, dash.no_update, dash.no_update, dash.no_update
+                return True, dash.no_update, dash.no_update, dash.no_update, dash.no_update, dash.no_update, dash.no_update, dash.no_update
             
             if status['start_time'] and (time.time() - status['start_time']) > 3600:  # 1 hour limit
                 print("\nTime limit reached...")
@@ -804,7 +822,7 @@ def control_generation(button_clicks, n_intervals, selected_language, selected_i
                 section_style['display'] = 'none'
                 export_button_style['display'] = 'none'
                 
-                return True, "Generation stopped after 1 hour.", "Start", start_style, None, section_style, export_button_style
+                return True, "Generation stopped after 1 hour.", "Start", start_style, False, None, section_style, export_button_style
             
             # Check if DLT code needs to be generated
             if status['iteration_count'] == 1 and status['dlt_code'] is None:
@@ -828,17 +846,17 @@ def control_generation(button_clicks, n_intervals, selected_language, selected_i
                     print(f"Stored DLT code: {status['dlt_code'] is not None}")
                     section_style['display'] = 'block'
                     export_button_style['display'] = 'block'
-                    return False, f"Generating files for '{status['industry']}'...", "Stop", stop_style, create_dlt_code_display(dlt_codes, selected_language), section_style, export_button_style
+                    return False, f"Generating files for '{status['industry']}'...", "Stop", stop_style, False, create_dlt_code_display(dlt_codes, selected_language), section_style, export_button_style
                 except Exception as e:
                     print(f"Error generating DLT code: {str(e)}")
                     section_style['display'] = 'block'
                     export_button_style['display'] = 'none'
-                    return False, f"Generating files for '{status['industry']}'...", "Stop", stop_style, loading_message, section_style, export_button_style
+                    return False, f"Generating files for '{status['industry']}'...", "Stop", stop_style, False, loading_message, section_style, export_button_style
             
             print("\nSubsequent iteration - using stored code")
             section_style['display'] = 'block'
-            export_button_style['display'] = 'block' if status['dlt_code'] else 'none'
-            return False, f"Generating files for '{status['industry']}'...", "Stop", stop_style, create_dlt_code_display(status['dlt_code'], selected_language), section_style, export_button_style
+            export_button_style['display'] = 'block'
+            return False, f"Generating files for '{status['industry']}'...", "Stop", stop_style, False, create_dlt_code_display(status['dlt_code'], selected_language), section_style, export_button_style
 
     raise dash.exceptions.PreventUpdate
 
@@ -884,12 +902,14 @@ def update_export_button(code_display):
 def trigger_initial_state_check(_):
     """Return current state values on page load."""
     with status["lock"]:
-        return [
-            'triggered',
-            status["selected_language"],
-            status["selected_industry"],
-            status["path_input"]
-        ]
+        if status["running"]:
+            return [
+                'triggered',
+                status["selected_language"],
+                status["selected_industry"],
+                status["path_input"]
+            ]
+        return ['triggered', '', '', '']
 
 # Add separate callback for language dropdown
 @app.callback(
