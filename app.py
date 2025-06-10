@@ -81,7 +81,8 @@ status = {
     "lock": threading.Lock(),
     "selected_language": None,
     "selected_industry": None,
-    "path_input": None
+    "path_input": None,
+    "selected_dlt_output": None
 }
 
 def generation_service():
@@ -123,6 +124,8 @@ def stop_generation_thread():
             status["start_time"] = None
             status["dlt_code"] = None
             status["output_path"] = None
+            # Don't reset selected_language, selected_industry, path_input, and selected_dlt_output
+            # as they are UI state that should persist
             print("Background thread stopped and state reset")
 
 # Initialize Dash app
@@ -141,7 +144,8 @@ def get_state():
             "dlt_code": status["dlt_code"],
             "selected_language": status["selected_language"],
             "selected_industry": status["selected_industry"],
-            "path_input": status["path_input"]
+            "path_input": status["path_input"],
+            "selected_dlt_output": status["selected_dlt_output"]
         }
         print("Returning state:", state)  # Add debug logging
         return jsonify(state)
@@ -246,24 +250,24 @@ def generate_dlt_references(schema, output_path, table_type):
         # SQL DLT code for change feed - using full catalog.schema format for change feeds
         sql_code = f'''
 -- Create streaming table for raw data
-CREATE OR REFRESH STREAMING TABLE <CHANGE_HERE: catalog>.<CHANGE_HERE: schema>.{table_name}_base
+CREATE OR REFRESH STREAMING TABLE bronze.{table_name}
 AS SELECT * FROM STREAM read_files("{output_path}/", format => "csv")
 COMMENT '<CHANGE_HERE: enter_table_comment>';
 
 -- Create streaming table
-CREATE OR REFRESH STREAMING TABLE <CHANGE_HERE: catalog>.<CHANGE_HERE: schema>.{table_name}
+CREATE OR REFRESH STREAMING TABLE silver.{table_name}
 COMMENT '<CHANGE_HERE: enter_table_comment>';
 
 -- Apply changes using SCD
-APPLY CHANGES INTO <CHANGE_HERE: catalog>.<CHANGE_HERE: schema>.{table_name}
-FROM STREAM(<CHANGE_HERE: catalog>.<CHANGE_HERE: schema>.{table_name}_base)
+APPLY CHANGES INTO silver.{table_name}
+FROM STREAM(bronze.{table_name})
 KEYS ({', '.join(keys)})
 SEQUENCE BY {sequence_by}
 STORED AS SCD TYPE <CHANGE_HERE: 1/2>;
 '''
         
         # Python DLT code for change feed - using full catalog.schema format for change feeds
-        python_code = f'''@dlt.table(name="<CHANGE_HERE: catalog>.<CHANGE_HERE: schema>.{table_name}_base")
+        python_code = f'''@dlt.table(name="bronze.{table_name}")
 def source():
     return (spark.readStream
         .format("cloudFiles")
@@ -272,54 +276,83 @@ def source():
     )
 
 dlt.create_streaming_table(
-    name="<CHANGE_HERE: catalog>.<CHANGE_HERE: schema>.{table_name}",
+    name="silver.{table_name}",
     comment="<CHANGE_HERE: enter_table_comment>"
 )
 
 dlt.apply_changes(
-    target="<CHANGE_HERE: catalog>.<CHANGE_HERE: schema>.{table_name}",
-    source="<CHANGE_HERE: catalog>.<CHANGE_HERE: schema>.{table_name}_base",
+    target="silver.{table_name}",
+    source="bronze.{table_name}_base",
     keys={keys},
     sequence_by="{sequence_by}",
     stored_as_scd_type="<CHANGE_HERE: 1/2>"
 )
 '''
-    else:  # fact or dimension - using simpler schema.table format
-        constraint_lines = []
-        for c in quality_constraints:
-            if c['action'] == 'warn':
-                constraint_lines.append(f"CONSTRAINT {c['name']} EXPECT ({c['condition']})")
-            elif c['action'] == 'drop':
-                constraint_lines.append(f"CONSTRAINT {c['name']} EXPECT ({c['condition']}) ON VIOLATION DROP ROW")
-            elif c['action'] == 'fail':
-                constraint_lines.append(f"CONSTRAINT {c['name']} EXPECT ({c['condition']}) ON VIOLATION FAIL UPDATE")
-        constraints_sql = f"(\n{', '.join(constraint_lines)}\n)" if quality_constraints else ""
-        
-        # SQL DLT code for regular tables - using simpler schema.table format
-        sql_code = f'''
-CREATE OR REFRESH STREAMING TABLE <CHANGE_HERE: schema>.{table_name}_bronze{constraints_sql}
+    else:  # fact or dimension tables
+        # Generate SQL code based on DLT Output selection
+        if status["selected_dlt_output"] == "bronze":
+            # Only bronze table without constraints
+            sql_code = f'''
+CREATE OR REFRESH STREAMING TABLE bronze.{table_name}
 AS SELECT * FROM STREAM read_files("{output_path}/", format => "csv")
 COMMENT '<CHANGE_HERE: enter_table_comment>'
 '''
-        
-        # Python DLT code for regular tables - using simpler schema.table format
-        python_constraints = []
-        for c in quality_constraints:
-            if c['action'] == 'warn':
-                python_constraints.append(f'@dlt.expect("{c["name"]}", "{c["condition"]}")')
-            elif c['action'] == 'drop':
-                python_constraints.append(f'@dlt.expect_or_drop("{c["name"]}", "{c["condition"]}")')
-            elif c['action'] == 'fail':
-                python_constraints.append(f'@dlt.expect_or_fail("{c["name"]}", "{c["condition"]}")')
-        
-        python_code = f'''@dlt.table(name="<CHANGE_HERE: schema>.{table_name}_bronze")
-{chr(10).join(python_constraints)}
+            # Python code for bronze only
+            python_code = f'''@dlt.table(name="bronze.{table_name}")
+def {table_name}():
+    return (spark.readStream
+        .format("cloudFiles")
+        .option("cloudFiles.format", "csv")
+        .load("{output_path}/")
+    )
+'''
+        else:  # bronze and silver
+            # Generate constraint lines for silver table
+            constraint_lines = []
+            for c in quality_constraints:
+                if c['action'] == 'warn':
+                    constraint_lines.append(f"CONSTRAINT {c['name']} EXPECT ({c['condition']})")
+                elif c['action'] == 'drop':
+                    constraint_lines.append(f"CONSTRAINT {c['name']} EXPECT ({c['condition']}) ON VIOLATION DROP ROW")
+                elif c['action'] == 'fail':
+                    constraint_lines.append(f"CONSTRAINT {c['name']} EXPECT ({c['condition']}) ON VIOLATION FAIL UPDATE")
+            constraints_sql = f"(\n{', '.join(constraint_lines)}\n)" if quality_constraints else ""
+
+            # SQL code for both bronze and silver
+            sql_code = f'''
+-- Create bronze table
+CREATE OR REFRESH STREAMING TABLE bronze.{table_name}
+AS SELECT * FROM STREAM read_files("{output_path}/", format => "csv")
+COMMENT '<CHANGE_HERE: enter_table_comment>';
+
+-- Create silver table with constraints
+CREATE OR REFRESH STREAMING TABLE silver.{table_name}{constraints_sql}
+AS SELECT * FROM STREAM(bronze.{table_name})
+COMMENT '<CHANGE_HERE: enter_table_comment>'
+'''
+
+            # Python code for both bronze and silver
+            python_constraints = []
+            for c in quality_constraints:
+                if c['action'] == 'warn':
+                    python_constraints.append(f'@dlt.expect("{c["name"]}", "{c["condition"]}")')
+                elif c['action'] == 'drop':
+                    python_constraints.append(f'@dlt.expect_or_drop("{c["name"]}", "{c["condition"]}")')
+                elif c['action'] == 'fail':
+                    python_constraints.append(f'@dlt.expect_or_fail("{c["name"]}", "{c["condition"]}")')
+
+            python_code = f'''@dlt.table(name="bronze.{table_name}")
 def {table_name}_bronze():
     return (spark.readStream
         .format("cloudFiles")
         .option("cloudFiles.format", "csv")
         .load("{output_path}/")
     )
+
+@dlt.table(name="silver.{table_name}")
+{chr(10).join(python_constraints)}
+def {table_name}_silver():
+    return spark.readStream.table("bronze.{table_name}")
 '''
     
     return {
@@ -613,6 +646,25 @@ def create_input_section():
                     }
                 ),
             ], style={'marginBottom': '20px', 'textAlign': 'center'}),
+            html.Div([
+                dcc.Dropdown(
+                    id='dlt-output-dropdown',
+                    options=[
+                        {"label": "Bronze", "value": "bronze"},
+                        {"label": "Bronze and Silver", "value": "bronze_silver"}
+                    ],
+                    value=None,
+                    placeholder="Choose DLT Output",
+                    style={
+                        'border': f'1px solid {DB_COLORS["border"]}',
+                        'borderRadius': '4px',
+                        'fontSize': '14px',
+                        'width': '200px',
+                        'display': 'inline-block',
+                        'verticalAlign': 'middle'
+                    }
+                ),
+            ], style={'marginBottom': '20px', 'textAlign': 'center'}),
         ], style={'marginBottom': '20px'}),
 
         html.Div([
@@ -714,11 +766,12 @@ app.layout = html.Div([
     [State('language-dropdown', 'value'),
      State('industry-dropdown', 'value'),
      State('path-input', 'value'),
+     State('dlt-output-dropdown', 'value'),
      State('dlt-code-section', 'style'),
      State('dlt-code-display', 'children')],
     prevent_initial_call=True
 )
-def control_generation(button_clicks, n_intervals, selected_language, selected_industry, path_input, current_section_style, current_display):
+def control_generation(button_clicks, n_intervals, selected_language, selected_industry, path_input, selected_dlt_output, current_section_style, current_display):
     global dimension_key_ranges, status
     
     ctx = dash.callback_context
@@ -738,6 +791,8 @@ def control_generation(button_clicks, n_intervals, selected_language, selected_i
             status["selected_industry"] = selected_industry
         if path_input:
             status["path_input"] = path_input
+        if selected_dlt_output:
+            status["selected_dlt_output"] = selected_dlt_output
 
     # Default section style
     section_style = current_section_style if current_section_style else {**STYLES['container'], 'display': 'none'}
@@ -775,7 +830,13 @@ def control_generation(button_clicks, n_intervals, selected_language, selected_i
                     html.Span("⚠️ Please select a language.", 
                              style={'color': '#FF3621'})
                 ], style={'padding': '12px'}), "Start", start_style, False, loading_message, section_style, export_button_style
-            
+
+            if not selected_dlt_output:
+                return True, html.Div([
+                    html.Span("⚠️ Please select a DLT Output.", 
+                             style={'color': '#FF3621'})
+                ], style={'padding': '12px'}), "Start", start_style, False, loading_message, section_style, export_button_style
+
             try:
                 print("\nStarting generation...")
                 with status["lock"]:
@@ -878,6 +939,8 @@ def control_generation(button_clicks, n_intervals, selected_language, selected_i
             print("\nSubsequent iteration - using stored code")
             section_style['display'] = 'block'
             export_button_style['display'] = 'block'
+            if status['dlt_code'] is None:
+                return False, f"Generating files for '{status['industry']}'...", "Stop", stop_style, False, loading_message, section_style, export_button_style
             return False, f"Generating files for '{status['industry']}'...", "Stop", stop_style, False, create_dlt_code_display(status['dlt_code'], selected_language), section_style, export_button_style
 
     raise dash.exceptions.PreventUpdate
@@ -917,7 +980,8 @@ def update_export_button(code_display):
     [Output('initial-state-trigger', 'children'),
      Output('language-dropdown', 'value'),
      Output('industry-dropdown', 'value'),
-     Output('path-input', 'value')],
+     Output('path-input', 'value'),
+     Output('dlt-output-dropdown', 'value')],
     Input('initial-state-trigger', 'children'),
     prevent_initial_call=False  # Allow initial call
 )
@@ -929,9 +993,10 @@ def trigger_initial_state_check(_):
                 'triggered',
                 status["selected_language"],
                 status["selected_industry"],
-                status["path_input"]
+                status["path_input"],
+                status["selected_dlt_output"]
             ]
-        return ['triggered', '', '', '']
+        return ['triggered', '', '', '', '']
 
 # Add separate callback for language dropdown
 @app.callback(
