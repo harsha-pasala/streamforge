@@ -3,39 +3,21 @@ import pandas as pd
 import os
 from datetime import datetime
 import tempfile
-from flask import request
 import logging
 import random
 
 logger = logging.getLogger(__name__)
 
 class BaseGenerator(ABC):
-    def __init__(self, schema_path, output_base_path):
+    def __init__(self, schema_path, output_base_path, is_local=True):
         self.schema_path = schema_path
         self.output_base_path = output_base_path
+        self.is_local = is_local
         self.schema = self._load_schema()
         
     def _is_local_env(self):
-        """Check if running in local environment by checking request headers."""
-        try:
-            # Get the actual URL from request headers
-            host = request.headers.get('X-Forwarded-Host', request.host)
-            referer = request.headers.get('Referer', '')
-            
-            logger.info(f"Detected host: {host}")
-            logger.info(f"Detected referer: {referer}")
-            
-            # Check if we're running on Databricks domain
-            is_databricks = any([
-                'databricks' in host,
-                'databricks' in referer
-            ])
-            
-            logger.info(f"Environment detection result: {'Databricks' if is_databricks else 'Local'}")
-            return not is_databricks
-        except Exception as e:
-            logger.info(f"Error during environment detection - defaulting to local. Error: {str(e)}")
-            return True
+        """Check if running in local environment."""
+        return self.is_local
         
     def _load_schema(self):
         """Load schema from YAML file."""

@@ -346,13 +346,16 @@ def generate_files_for_industry(industry):
             schema_path = os.path.join(SCHEMA_BASE_PATH, industry, f"{table}.yml")
             logger.info(f"Loading schema from: {schema_path}")
             
+            # Determine if we're in a local environment based on the output path
+            is_local = not status['output_path'].startswith('/Volumes/')
+            
             # Select appropriate generator based on table type
             if table_type == "dimension":
-                generator = DimensionGenerator(schema_path, status['output_path'])
+                generator = DimensionGenerator(schema_path, status['output_path'], is_local=is_local)
             elif table_type == "fact":
-                generator = FactGenerator(schema_path, status['output_path'], dimension_key_ranges)
+                generator = FactGenerator(schema_path, status['output_path'], dimension_key_ranges, is_local=is_local)
             elif table_type == "change_feed":
-                generator = ChangeFeedGenerator(schema_path, status['output_path'])
+                generator = ChangeFeedGenerator(schema_path, status['output_path'], is_local=is_local)
             else:
                 logger.warning(f"Unknown table type: {table_type}")
                 continue

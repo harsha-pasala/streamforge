@@ -4,8 +4,8 @@ from faker import Faker
 import random
 
 class DimensionGenerator(BaseGenerator):
-    def __init__(self, schema_path, output_base_path):
-        super().__init__(schema_path, output_base_path)
+    def __init__(self, schema_path, output_base_path, is_local=True):
+        super().__init__(schema_path, output_base_path, is_local=is_local)
         self.fake = Faker()
         
     def _generate_value(self, col, col_def):

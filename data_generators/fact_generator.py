@@ -4,8 +4,8 @@ from faker import Faker
 import random
 
 class FactGenerator(BaseGenerator):
-    def __init__(self, schema_path, output_base_path, dimension_key_ranges):
-        super().__init__(schema_path, output_base_path)
+    def __init__(self, schema_path, output_base_path, dimension_key_ranges, is_local=True):
+        super().__init__(schema_path, output_base_path, is_local=is_local)
         self.fake = Faker()
         self.dimension_key_ranges = dimension_key_ranges
         
