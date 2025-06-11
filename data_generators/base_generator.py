@@ -162,6 +162,8 @@ class BaseGenerator(ABC):
                     return result
             elif 'name' in col_lower:
                 return self.fake.name()
+            elif 'email' in col_lower:
+                return self.fake.email()
             elif 'address' in col_lower:
                 return self.fake.address()
             elif 'city' in col_lower:
@@ -172,8 +174,6 @@ class BaseGenerator(ABC):
                 return self.fake.zipcode()
             elif 'contact' in col_lower and 'number' in col_lower:
                 return f"({self.fake.random_number(digits=3)}) {self.fake.random_number(digits=3)}-{self.fake.random_number(digits=4)}"
-            elif 'email' in col_lower:
-                return self.fake.email()
             else:
                 return self.fake.word().title()
         elif dtype == 'datetime':

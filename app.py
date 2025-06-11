@@ -259,8 +259,8 @@ def generate_dlt_references(schema, output_path, table_type):
         sql_code = f'''
 -- Create streaming table for raw data
 CREATE OR REFRESH STREAMING TABLE bronze.{table_name}
-AS SELECT * FROM STREAM read_files("{output_path}/", format => "csv")
-COMMENT '{get_table_comment("Bronze", table_name, "change feed")}';
+COMMENT '{get_table_comment("Bronze", table_name, "change feed")}'
+AS SELECT * FROM STREAM read_files("{output_path}/", format => "csv", inferColumnTypes => "true", multiLine => "true");
 
 -- Create streaming table
 CREATE OR REFRESH STREAMING TABLE silver.{table_name}
@@ -280,6 +280,8 @@ def source():
     return (spark.readStream
         .format("cloudFiles")
         .option("cloudFiles.format", "csv")
+        .option("cloudFiles.inferColumnTypes", "true")
+        .option("multiLine", "true")
         .load("{output_path}/")
     )
 
@@ -290,7 +292,7 @@ dlt.create_streaming_table(
 
 dlt.apply_changes(
     target="silver.{table_name}",
-    source="bronze.{table_name}_base",
+    source="bronze.{table_name}",
     keys={keys},
     sequence_by="{sequence_by}",
     stored_as_scd_type="{2 if status["selected_dlt_mode"] == "full_code" else "<CHANGE_HERE: 1/2>"}"
@@ -302,8 +304,8 @@ dlt.apply_changes(
             # Only bronze table without constraints
             sql_code = f'''
 CREATE OR REFRESH STREAMING TABLE bronze.{table_name}
-AS SELECT * FROM STREAM read_files("{output_path}/", format => "csv")
 COMMENT '{get_table_comment("Bronze", table_name, table_type)}'
+AS SELECT * FROM STREAM read_files("{output_path}/", format => "csv", inferColumnTypes => "true", multiLine => "true")
 '''
             # Python code for bronze only
             python_code = f'''@dlt.table(name="bronze.{table_name}")
@@ -311,6 +313,8 @@ def {table_name}():
     return (spark.readStream
         .format("cloudFiles")
         .option("cloudFiles.format", "csv")
+        .option("cloudFiles.inferColumnTypes", "true")
+        .option("multiLine", "true")
         .load("{output_path}/")
     )
 '''
@@ -330,13 +334,13 @@ def {table_name}():
             sql_code = f'''
 -- Create bronze table
 CREATE OR REFRESH STREAMING TABLE bronze.{table_name}
-AS SELECT * FROM STREAM read_files("{output_path}/", format => "csv")
-COMMENT '{get_table_comment("Bronze", table_name, table_type)}';
+COMMENT '{get_table_comment("Bronze", table_name, table_type)}'
+AS SELECT * FROM STREAM read_files("{output_path}/", format => "csv", inferColumnTypes => "true", multiLine => "true");
 
 -- Create silver table with constraints
 CREATE OR REFRESH STREAMING TABLE silver.{table_name}{constraints_sql}
-AS SELECT * FROM STREAM(bronze.{table_name})
 COMMENT '{get_table_comment("Silver", table_name, table_type)}'
+AS SELECT * FROM STREAM(bronze.{table_name})
 '''
 
             # Python code for both bronze and silver
@@ -354,6 +358,8 @@ def {table_name}_bronze():
     return (spark.readStream
         .format("cloudFiles")
         .option("cloudFiles.format", "csv")
+        .option("cloudFiles.inferColumnTypes", "true")
+        .option("multiLine", "true")
         .load("{output_path}/")
     )
 
@@ -863,7 +869,7 @@ def control_generation(button_clicks, n_intervals, selected_language, selected_i
 
             if not selected_dlt_output:
                 return True, html.Div([
-                    html.Span("⚠️ Please select a DLT Output.", 
+                    html.Span("⚠️ Please select medallion layers for DLT Output.", 
                              style={'color': '#FF3621'})
                 ], style={'padding': '12px'}), "Start", start_style, False, loading_message, section_style, export_button_style
 
