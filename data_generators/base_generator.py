@@ -172,7 +172,7 @@ class BaseGenerator(ABC):
                 return self.fake.state()
             elif 'zip' in col_lower:
                 return self.fake.zipcode()
-            elif 'contact' in col_lower and 'number' in col_lower:
+            elif ('contact' in col_lower or 'phone' in col_lower) and 'number' in col_lower:
                 return f"({self.fake.random_number(digits=3)}) {self.fake.random_number(digits=3)}-{self.fake.random_number(digits=4)}"
             else:
                 return self.fake.word().title()
