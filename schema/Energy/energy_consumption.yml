@@ -8,6 +8,12 @@ data_quality_rules:
     anomaly_percentage: 0.15  # 15% of values will be outside this range
     description: "Efficiency rating should be between 65% and 95% for normal operation"
     action: "WARN"  # WARN, FAIL, or DROP
+  ambient_temperature:
+    min_value: 0
+    max_value: 40
+    anomaly_percentage: 0.15
+    description: "Ambient temperature should be between 0 and 40 degrees Celsius"
+    action: "DROP"
 columns:
   consumption_id: int
   plant_id: int
