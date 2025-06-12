@@ -26,9 +26,11 @@ A Python-based data generation tool for creating realistic streaming data pipeli
 
 - **Continuous Data Generation**:
   - Simulates real-time data streaming by continuously generating files
-  - Runs until manually stopped or reaches 4-hour time limit
+  - Configurable duration (1-24 hours) with countdown timer
   - Maintains referential integrity across dimension and fact tables
   - Generates new data every 15 seconds
+  - Automatic cleanup when duration expires
+  - Persistent UI state during page reloads
 
 ## Prerequisites
 
@@ -82,16 +84,19 @@ pip install -r requirements.txt
    - Choose output language (SQL/Python)
    - Select medallion layers (Bronze only or Bronze + Silver)
    - Choose DLT mode (Full Code or Workshop Mode)
+   - Set duration in hours (1-24, default: 4)
    - Click "Start" to begin generation
 
    The application will:
    - Generate initial dimension tables and DLT code
    - Continuously generate new fact and change feed data every 15 seconds
    - Maintain referential integrity with dimension tables
+   - Show countdown timer with remaining time
    - Continue until either:
      * You click the "Stop" button
-     * The 4-hour time limit is reached
+     * The configured duration expires
    - Automatically stop and clean up resources when finished
+   - Maintain UI state consistency during page reloads
 
 ### DLT Generation Options
 
@@ -102,6 +107,12 @@ pip install -r requirements.txt
 2. **DLT Modes**:
    - **Full Code**: Generates complete, production-ready DLT code
    - **Workshop Mode**: Generates code with placeholders for educational purposes
+
+3. **Duration Control**:
+   - Set generation duration between 1 and 24 hours
+   - Real-time countdown timer shows remaining time
+   - Automatic cleanup when duration expires
+   - UI state persists during page reloads
 
 ## Schema Configuration
 
