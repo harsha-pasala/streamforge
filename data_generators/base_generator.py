@@ -209,6 +209,9 @@ class BaseGenerator(ABC):
                     while '?' in result:
                         result = result.replace('?', random.choice('ABCDEFGHIJKLMNOPQRSTUVWXYZ'), 1)
                     return result
+                else:
+                    # Simple catch-all: return format as-is
+                    return format_spec
             elif 'name' in col_lower:
                 return self.fake.name()
             elif 'email' in col_lower:
@@ -228,7 +231,10 @@ class BaseGenerator(ABC):
         elif dtype == 'datetime':
             return self.fake.date_time().isoformat()
             
-        raise ValueError(f"Unsupported data type: {dtype}")
+        error_msg = f"Unsupported data type: {dtype}"
+        if format_spec:
+            error_msg += f" with format: {format_spec}"
+        raise ValueError(error_msg)
     
     @abstractmethod
     def generate_data(self):
