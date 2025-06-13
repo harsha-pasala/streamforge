@@ -389,6 +389,15 @@ def generate_files_for_industry(industry):
     schemas = load_all_schemas(industry)
     dlt_references = []
 
+    # Check and clean up output directory before starting
+    if current_iteration == 0:
+        output_dir = os.path.join(status['output_path'], industry)
+        # Create a temporary generator instance to handle directory cleanup
+        is_local = not status['output_path'].startswith('/Volumes/')
+        # Use DimensionGenerator since it's the simplest concrete implementation
+        temp_generator = DimensionGenerator(None, status['output_path'], is_local=is_local)
+        temp_generator._check_directory_empty(output_dir)
+
     # Store dimension key ranges in first iteration
     if current_iteration == 0:
         for schema in schemas:

@@ -24,6 +24,10 @@ class BaseGenerator(ABC):
         import yaml
         logger.info(f"Loading schema from: {self.schema_path}")
         
+        # If schema_path is None, return an empty schema (used for cleanup operations)
+        if self.schema_path is None:
+            return {"table": "temp", "columns": []}
+            
         try:
             with open(self.schema_path) as f:
                 return yaml.safe_load(f)
@@ -50,25 +54,63 @@ class BaseGenerator(ABC):
             return f"{table_dir}/data_{timestamp}.csv"
     
     def _check_directory_empty(self, directory):
-        """Check if directory is empty in both local and Databricks environments."""
+        """Check if directory is empty and clean it up if needed."""
         if self._is_local_env():
-            # Local environment check
+            # Local environment check and cleanup
             if os.path.exists(directory):
                 if os.listdir(directory):
-                    raise ValueError(f"Directory {directory} is not empty. Please clear the directory before generating new data.")
+                    logger.info(f"Directory {directory} is not empty. Cleaning up...")
+                    try:
+                        import shutil
+                        shutil.rmtree(directory)
+                        logger.info(f"Successfully cleaned up directory: {directory}")
+                    except Exception as e:
+                        logger.error(f"Error cleaning up directory {directory}: {str(e)}")
+                        raise
+            else:
+                logger.info(f"Directory {directory} does not exist - will be created when needed")
         else:
-            # Databricks environment check
+            # Databricks environment check and cleanup
             from databricks.sdk import WorkspaceClient
             workspace = WorkspaceClient()
+            
+            # Remove trailing slash for directory operations
+            directory = directory.rstrip('/')
+            
+            def delete_directory_recursive(dir_path):
+                """Recursively delete a directory and its contents."""
+                try:
+                    # List contents of the directory
+                    contents = list(workspace.files.list_directory_contents(dir_path))
+                    if contents:
+                        for item in contents:
+                            if item.is_directory:
+                                # Recursively delete subdirectories
+                                delete_directory_recursive(item.path)
+                            else:
+                                # Delete files
+                                workspace.files.delete(item.path)
+                        # Delete the empty directory
+                        workspace.files.delete_directory(dir_path)
+                        logger.info(f"Successfully cleaned up directory: {dir_path}")
+                except Exception as e:
+                    if "not found" not in str(e).lower():
+                        logger.error(f"Error cleaning up directory {dir_path}: {str(e)}")
+                        raise
+            
             try:
-                # List files in the directory
-                files = workspace.files.list(directory)
-                if files and len(files) > 0:
-                    raise ValueError(f"Directory {directory} is not empty. Please clear the directory before generating new data.")
+                # Check if directory exists and has contents
+                contents = list(workspace.files.list_directory_contents(directory))
+                if contents:
+                    logger.info(f"Directory {directory} is not empty. Cleaning up...")
+                    delete_directory_recursive(directory)
             except Exception as e:
                 # If directory doesn't exist, that's fine - it will be created
-                if "does not exist" not in str(e):
-                    raise e
+                if "not found" in str(e).lower():
+                    logger.info(f"Directory {directory} does not exist - will be created when needed")
+                else:
+                    logger.error(f"Unexpected error checking directory {directory}: {str(e)}")
+                    raise
     
     def _save_to_databricks(self, df, output_path):
         """Save data to Databricks UC volume using SDK."""
