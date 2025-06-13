@@ -8,16 +8,16 @@ columns:
     format: "PROD-####"  # e.g., PROD-0001
   sku: 
     type: string
-    format: "SKU-####-??"  # e.g., SKU-2023-01
+    format: "SKU-####-##"  # e.g., SKU-2023-01
   category: 
     type: string
-    format: "CAT-??"  # e.g., CAT-01
+    format: "CAT-##"  # e.g., CAT-01
   subcategory: 
     type: string
-    format: "SUBCAT-??"  # e.g., SUBCAT-01
+    format: "SUBCAT-##"  # e.g., SUBCAT-01
   brand: 
     type: string
-    format: "BRAND-??"  # e.g., BRAND-01
+    format: "BRAND-##"  # e.g., BRAND-01
   supplier_id: int
   unit_price: float
   cost_price: float
@@ -27,12 +27,12 @@ columns:
     format: "DIM-###x###x###"  # e.g., DIM-100x200x300
   color: 
     type: string
-    format: "COL-??"  # e.g., COL-01
+    format: "COL-##"  # e.g., COL-01
   size: 
     type: string
     format: "SIZE-?"  # e.g., SIZE-S
   status: 
     type: string
-    format: "STATUS-?"  # e.g., STATUS-1
+    format: "STATUS-#"  # e.g., STATUS-1
   created_date: datetime
   last_modified_date: datetime 
