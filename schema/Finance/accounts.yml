@@ -1,0 +1,24 @@
+table: accounts
+type: dimension
+num_rows: 2000
+columns:
+  account_id: int
+  customer_id: int
+  account_type: 
+    type: string
+    format: "Savings|Checking|Money Market|Certificate of Deposit"  # Account type
+  account_status: 
+    type: string
+    format: "Active|Dormant|Closed|Frozen"  # Account status
+  opening_date: datetime
+  currency: 
+    type: string
+    format: "USD|CAD"  # Currency code
+  branch_id: int
+  product_id: int
+  account_tier: 
+    type: string
+    format: "Basic|Premium|Gold|Platinum"  # Account tier level
+  fee_structure:
+    type: string
+    format: "Standard|Premium|Waived|Custom"  # Fee structure type

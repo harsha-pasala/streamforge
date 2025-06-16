@@ -1,0 +1,58 @@
+table: customer_changes
+type: change_feed
+num_rows: 100
+change_feed_rules:
+  # Distribution of operations for each customer_id
+  operation_distribution:
+    INSERT: 1      # Each customer gets exactly 1 INSERT
+    UPDATE: 3      # Each customer gets 0-3 UPDATEs
+    DELETE: 0.2    # 20% of customers get a DELETE
+  # Fields that can be updated in UPDATE operations
+  updatable_fields:
+    - customer_segment
+    - income_level
+    - employment_status
+    - risk_profile
+    - preferred_channel
+    - kyc_status
+  # Time range for generating changes
+  time_range:
+    start_date: "2023-01-01"  # Start date for generating changes
+    end_date: "2024-03-15"    # End date for generating changes
+  # Minimum and maximum time between changes (in days)
+  time_between_changes:
+    min: 1
+    max: 90
+  # Fields that become null in DELETE operations
+  delete_null_fields:
+    - customer_segment
+    - income_level
+    - employment_status
+    - risk_profile
+    - kyc_status
+  # DLT specific configurations
+  dlt_config:
+    keys: ["customer_id"]  # Primary key for change tracking
+    sequence_by: "change_timestamp"  # Field to sequence changes by
+columns:
+  change_id: int
+  customer_id: int
+  customer_segment: 
+    type: string
+    format: "Retail|Business|Wealth|Corporate"  # Customer segment
+  income_level: 
+    type: string
+    format: "Low|Medium|High|Ultra High"  # Income level category
+  employment_status: 
+    type: string
+    format: "Employed|Self-Employed|Retired|Unemployed"  # Employment status
+  risk_profile: 
+    type: string
+    format: "Conservative|Moderate|Aggressive"  # Risk tolerance level
+  kyc_status: 
+    type: string
+    format: "Verified|Pending|Rejected"  # KYC verification status
+  operation: 
+    type: string
+    format: "INSERT|UPDATE|DELETE"  # Change operation type
+  change_timestamp: datetime 

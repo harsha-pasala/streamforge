@@ -11,13 +11,13 @@ logger = logging.getLogger(__name__)
 class BaseGenerator(ABC):
     def __init__(self, schema_path, output_base_path, is_local=True):
         self.schema_path = schema_path
-        self.output_base_path = output_base_path
-        self.is_local = is_local
+        self.output_base_path = output_base_path.strip()
+        self._is_local = is_local
         self.schema = self._load_schema()
         
     def _is_local_env(self):
         """Check if running in local environment."""
-        return self.is_local
+        return self._is_local
         
     def _load_schema(self):
         """Load schema from YAML file."""
@@ -224,6 +224,8 @@ class BaseGenerator(ABC):
                 return self.fake.state()
             elif 'zip' in col_lower:
                 return self.fake.zipcode()
+            elif 'country' in col_lower:
+                return self.fake.country()
             elif ('contact' in col_lower or 'phone' in col_lower) and 'number' in col_lower:
                 return f"({self.fake.random_number(digits=3)}) {self.fake.random_number(digits=3)}-{self.fake.random_number(digits=4)}"
             else:

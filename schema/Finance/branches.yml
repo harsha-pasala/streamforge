@@ -1,0 +1,26 @@
+table: branches
+type: dimension
+num_rows: 200
+columns:
+  branch_id: int
+  branch_code:
+    type: string
+    format: "BR-####"  # Branch code format
+  address: string
+  city: string
+  state: string
+  country: string
+  phone: string
+  email: string
+  branch_type: 
+    type: string
+    format: "Full Service|Express|Investment Center|Private Banking"  # Branch type
+  branch_status: 
+    type: string
+    format: "Active|Temporary Closed|Permanent Closed|Under Renovation"  # Branch status
+  services_offered: 
+    type: string
+    format: "Basic|Full|Investment|Private"  # Services offered
+  branch_segment: 
+    type: string
+    format: "Retail|Commercial|Wealth|Corporate"  # Branch segment 

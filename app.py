@@ -911,7 +911,7 @@ def control_generation(button_clicks, n_intervals, selected_language, selected_i
         if selected_industry:
             status["selected_industry"] = selected_industry
         if path_input:
-            status["path_input"] = path_input
+            status["path_input"] = path_input.strip()  # Trim whitespace
         if selected_dlt_output:
             status["selected_dlt_output"] = selected_dlt_output
         if selected_dlt_mode:

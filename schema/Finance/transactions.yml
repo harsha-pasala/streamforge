@@ -1,0 +1,39 @@
+table: transactions
+type: fact
+num_rows: 250
+data_quality_rules:
+  transaction_amount:
+    min_value: 0.01
+    max_value: 1000000
+    anomaly_percentage: 0.05
+    description: "Transaction amount should be between 0.01 and 1,000,000"
+    action: "WARN"
+  transaction_fee:
+    min_value: 0
+    max_value: 1000
+    anomaly_percentage: 0.10
+    description: "Transaction fee should be between 0 and 1,000"
+    action: "WARN"
+columns:
+  transaction_id: int
+  account_id: int
+  customer_id: int
+  transaction_date: datetime
+  transaction_type: 
+    type: string
+    format: "Debit|Credit"  # Transaction type
+  transaction_amount: float
+  transaction_currency: string
+  transaction_status: string
+  transaction_channel: string
+  transaction_location: string
+  transaction_fee: decimal
+  merchant_category: 
+    type: string
+    format: "Retail|Restaurant|Travel|Entertainment|Healthcare|Education|Utilities|Insurance|Real Estate|Automotive|Gas Station|Grocery|Department Store|Online Shopping|Professional Services|Government|Non-Profit|Financial Services|Telecommunications|Transportation|Hotels|Airlines|Cruise Lines|Rental Cars|Amusement Parks|Movie Theaters|Sporting Events|Gyms|Beauty Salons|Pharmacies|Home Improvement|Electronics|Furniture|Clothing|Jewelry|Books|Music|Pet Supplies|Office Supplies|Hardware|Garden|Toys|Sporting Goods|Art Supplies|Liquor Stores|Tobacco|Gambling|Adult Entertainment|Other"  # Merchant category
+  authorization_code: 
+    type: string
+    format: "AUTH######"  # Authorization code format
+  risk_level: 
+    type: string
+    format: "Low|Medium|High|Critical"  # Transaction risk level 

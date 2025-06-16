@@ -1,0 +1,20 @@
+table: customers
+type: dimension
+num_rows: 1000
+columns:
+  customer_id: int
+  first_name: string
+  last_name: string
+  email: string
+  phone: string
+  address: string
+  city: string
+  state: string
+  zip_code: string
+  country: string
+  preferred_channel: 
+    type: string
+    format: "Branch|Online|Mobile|Phone"  # Preferred banking channel
+  kyc_status: 
+    type: string
+    format: "Verified|Pending|Rejected"  # KYC verification status 

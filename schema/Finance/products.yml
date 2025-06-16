@@ -1,0 +1,37 @@
+table: products
+type: dimension
+num_rows: 50
+columns:
+  product_id: int
+  product_name: string
+  product_type: 
+    type: string
+    format: "Deposit|Loan|Investment|Credit Card"  # Product type
+  product_category: 
+    type: string
+    format: "Personal|Business|Wealth Management|Corporate"  # Product category
+  description: string
+  interest_rate_type: 
+    type: string
+    format: "Fixed|Variable|Tiered|Promotional"  # Interest rate type
+  fee_structure: 
+    type: string
+    format: "Standard|Premium|Waived|Custom"  # Fee structure type
+  product_features: string
+  eligibility_criteria: string
+  risk_level: 
+    type: string
+    format: "Low|Medium|High"  # Risk level
+  target_customer_segment: 
+    type: string
+    format: "Retail|Business|Wealth|Corporate"  # Target customer segment
+  product_status: 
+    type: string
+    format: "Active|Inactive|Promotional|Discontinued"  # Product status
+  regulatory_compliance: 
+    type: string
+    format: "Compliant|Pending|Exempt"  # Regulatory compliance status
+  product_manager_id: int
+  product_code: 
+    type: string
+    format: "PROD-####"  # Product code format 

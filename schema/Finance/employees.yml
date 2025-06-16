@@ -1,0 +1,28 @@
+table: employees
+type: dimension
+num_rows: 500
+columns:
+  employee_id: int
+  first_name: string
+  last_name: string
+  email: string
+  phone: string
+  department: 
+    type: string
+    format: "Retail Banking|Commercial Banking|Wealth Management|Operations|IT|HR|Finance|Risk"  # Department
+  job_title: 
+    type: string
+    format: "Teller|Personal Banker|Loan Officer|Investment Advisor|Branch Manager|Operations Manager|IT Specialist|HR Specialist"  # Job title
+  branch_id: int
+  employee_status: 
+    type: string
+    format: "Active|On Leave|Terminated|Retired"  # Employee status
+  salary_grade: 
+    type: string
+    format: "G1|G2|G3|G4|G5|G6|G7|G8"  # Salary grade
+  education_level: 
+    type: string
+    format: "High School|Associate|Bachelor|Master|PhD"  # Education level
+  employee_type: 
+    type: string
+    format: "Full Time|Part Time|Contract|Intern"  # Employee type
