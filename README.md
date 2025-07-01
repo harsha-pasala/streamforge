@@ -1,6 +1,6 @@
-# DLT StreamForge
+# Lakeflow StreamForge
 
-A Python-based data generation tool for creating realistic streaming data pipelines with Databricks Delta Live Tables (DLT). This tool generates dimension, fact, and change feed tables with configurable schemas and data quality rules.
+A Python-based data generation tool for creating realistic streaming data pipelines with Databricks Lakeflow Declarative Pipelines. This tool generates dimension, fact, and change feed tables with configurable schemas and data quality rules.
 
 ## Features
 
@@ -16,13 +16,13 @@ A Python-based data generation tool for creating realistic streaming data pipeli
   - Automatic data quality rule application during generation
   - Support for both normal and anomalous data patterns
 
-- **DLT Pipeline Generation**:
-  - Automatic DLT code generation in SQL and Python
+- **Lakeflow Declarative Pipeline Generation**:
+  - Automatic pipeline code generation in SQL and Python
   - Support for streaming tables and views
   - SCD Type 2 implementation for change feeds
   - Exportable as Jupyter notebooks
   - Flexible medallion architecture options (Bronze only or Bronze + Silver)
-  - Two DLT modes: Full Code and Workshop Mode
+  - Two modes: Full Code and Workshop Mode
 
 - **Continuous Data Generation**:
   - Simulates real-time data streaming by continuously generating files
@@ -83,12 +83,12 @@ pip install -r requirements.txt
    - Select your industry
    - Choose output language (SQL/Python)
    - Select medallion layers (Bronze only or Bronze + Silver)
-   - Choose DLT mode (Full Code or Workshop Mode)
+   - Choose pipeline mode (Full Code or Workshop Mode)
    - Set duration in hours (1-24, default: 4)
    - Click "Start" to begin generation
 
    The application will:
-   - Generate initial dimension tables and DLT code
+   - Generate initial dimension tables and pipeline code
    - Continuously generate new fact and change feed data every 15 seconds
    - Maintain referential integrity with dimension tables
    - Show countdown timer with remaining time
@@ -98,14 +98,14 @@ pip install -r requirements.txt
    - Automatically stop and clean up resources when finished
    - Maintain UI state consistency during page reloads
 
-### DLT Generation Options
+### Pipeline Generation Options
 
 1. **Medallion Layers**:
-   - **Bronze Only**: Generates DLT code for raw data ingestion only
-   - **Bronze + Silver**: Generates DLT code for both raw data ingestion and quality-enriched tables
+   - **Bronze Only**: Generates pipeline code for raw data ingestion only
+   - **Bronze + Silver**: Generates pipeline code for both raw data ingestion and quality-enriched tables
 
-2. **DLT Modes**:
-   - **Full Code**: Generates complete, production-ready DLT code
+2. **Pipeline Modes**:
+   - **Full Code**: Generates complete, production-ready pipeline code
    - **Workshop Mode**: Generates code with placeholders for educational purposes
 
 3. **Duration Control**:
@@ -179,7 +179,7 @@ data_quality_rules:
 
 The tool generates:
 1. CSV files for each table
-2. DLT pipeline code in SQL and Python
+2. Pipeline code in SQL and Python
 3. Jupyter notebook with complete pipeline code
    - Provides guidance on replacing placeholders in Workshop Mode
    - Contains links to relevant Databricks documentation
