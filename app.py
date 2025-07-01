@@ -605,7 +605,7 @@ def create_header():
                     'verticalAlign': 'middle'
                 }
             ),
-            html.H2("DLT StreamForge", 
+            html.H2("Lakeflow StreamForge", 
                     style={
                         'color': DB_COLORS['text'],
                         'fontWeight': '600',
