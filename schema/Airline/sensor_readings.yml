@@ -7,7 +7,7 @@ data_quality_rules:
     max_value: 10000  # Generic max value for sensor readings
     anomaly_percentage: 0.15  # 15% of values will be outside this range
     description: "Sensor values should be within reasonable operational ranges"
-    action: "WARN"  # WARN, FAIL, or DROP
+    action: "DROP"  # WARN, FAIL, or DROP
   engine_efficiency:
     min_value: 0.75  # 75% minimum efficiency
     max_value: 0.98  # 98% maximum efficiency
