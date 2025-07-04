@@ -1,0 +1,23 @@
+table: aircraft
+type: dimension
+num_rows: 500
+data_quality_rules:
+  aircraft_id:
+    not_null: true
+    description: "Primary key should never be null"
+    action: "fail"
+columns:
+  aircraft_id: int
+  aircraft_name: 
+    type: string
+    format: "A######"
+  aircraft_type: 
+    type: string
+    format: "BOEING_737|BOEING_747|BOEING_777|BOEING_787|AIRBUS_A320|AIRBUS_A330|AIRBUS_A350|AIRBUS_A380|EMBRAER_E175|BOMBARDIER_CRJ900"
+  manufacturer: 
+    type: string
+    format: "MAN-####"  # e.g., MAN-1234
+  model_number: 
+    type: string
+    format: "MOD-####-##"  # e.g., MOD-2023-01
+  registration_date: datetime

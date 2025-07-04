@@ -1,0 +1,25 @@
+table: pilots
+type: dimension
+num_rows: 50
+data_quality_rules:
+  pilot_id:
+    not_null: true
+    description: "Primary key should never be null"
+    action: "fail"
+columns:
+  pilot_id: int
+  pilot_name: 
+    type: string
+    format: "PILOT-####"  # e.g., PILOT-0001
+  specialization: 
+    type: string
+    format: "SPEC-##"  # e.g., SPEC-01
+  certification_level: 
+    type: string
+    format: "CERT-#"  # e.g., CERT-1
+  contact_number: string
+  email_address: string
+  hire_date: datetime
+  status: 
+    type: string
+    format: "STATUS-#"  # e.g., STATUS-1 

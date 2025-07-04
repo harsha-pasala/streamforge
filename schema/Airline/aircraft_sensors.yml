@@ -1,0 +1,28 @@
+table: aircraft_sensors
+type: dimension
+num_rows: 100
+data_quality_rules:
+  sensor_id:
+    not_null: true
+    description: "Primary key should never be null"
+    action: "fail"
+columns:
+  sensor_id: int
+  sensor_name: 
+    type: string
+    format: "SENSOR-####"  # e.g., SENSOR-0001
+  sensor_type: 
+    type: string
+    format: "ENGINE_TEMP|OIL_PRESSURE|FUEL_FLOW|ALTITUDE|AIRSPEED|VIBRATION|HUMIDITY|AMBIENT_TEMP|ENGINE_RPM|THRUST_LEVEL"
+  sensor_location: 
+    type: string
+    format: "ENGINE_1|ENGINE_2|WING_LEFT|WING_RIGHT|FUSELAGE|COCKPIT|LANDING_GEAR|FUEL_TANK"
+  measurement_unit: 
+    type: string
+    format: "CELSIUS|PSI|LITERS_PER_HOUR|FEET|KNOTS|MM_PER_SEC|PERCENT|RPM|NEWTONS"
+  manufacturer: 
+    type: string
+    format: "MAN-####"  # e.g., MAN-1234
+  model_number: 
+    type: string
+    format: "MOD-####-##"  # e.g., MOD-2023-01

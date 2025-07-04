@@ -1,0 +1,60 @@
+table: passenger_changes
+type: change_feed
+num_rows: 100
+change_feed_rules:
+  # Distribution of operations for each passenger_id
+  operation_distribution:
+    INSERT: 1      # Each passenger gets exactly 1 INSERT
+    UPDATE: 3      # Each passenger gets 0-3 UPDATEs
+    DELETE: 0.2    # 20% of passengers get a DELETE
+  # Fields that can be updated in UPDATE operations
+  updatable_fields:
+    - frequent_flyer_status
+    - contact_number
+    - email_address
+    - nationality_country
+    - passport_number
+    - status
+  # Time range for generating changes
+  time_range:
+    start_date: "2023-01-01"  # Start date for generating changes
+    end_date: "2024-03-15"    # End date for generating changes
+  # Minimum and maximum time between changes (in days)
+  time_between_changes:
+    min: 1
+    max: 90
+  # Fields that become null in DELETE operations
+  delete_null_fields:
+    - first_name
+    - last_name
+    - frequent_flyer_status
+    - contact_number
+    - email_address
+    - nationality_country
+    - passport_number
+    - status
+  # DLT specific configurations
+  dlt_config:
+    keys: ["passenger_id"]  # Primary key for change tracking
+    sequence_by: "change_timestamp"  # Field to sequence changes by
+columns:
+  passenger_id: int
+  first_name: string
+  last_name: string
+  frequent_flyer_status: 
+    type: string
+    format: "BRONZE|SILVER|GOLD|PLATINUM|DIAMOND|EXECUTIVE"
+  contact_number: string
+  email_address: string
+  date_of_birth: datetime
+  nationality_country: string
+  passport_number: 
+    type: string
+    format: "PASSPORT-####-####"  # e.g., PASSPORT-1234-5678
+  status: 
+    type: string
+    format: "ACTIVE|INACTIVE|BLACKLISTED|VIP"
+  operation: 
+    type: string
+    format: "INSERT|UPDATE|DELETE"
+  change_timestamp: datetime 

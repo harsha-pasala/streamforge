@@ -1,0 +1,43 @@
+table: flight_operations
+type: fact
+num_rows: 100
+data_quality_rules:
+  fuel_consumption_liters:
+    min_value: 0
+    max_value: 50000  # Adding a reasonable max value for generation
+    anomaly_percentage: 0.15  # 15% of values will be outside this range
+    description: "Fuel consumption should be between 0 and 50,000 liters"
+    action: "WARN"
+columns:
+  flight_id: int
+  aircraft_id: int
+  pilot_id: int
+  timestamp: datetime
+  departure_airport: string
+  arrival_airport: string
+  flight_number: 
+    type: string
+    format: "FL-####"  # e.g., FL-1234
+  fuel_consumption_liters: float
+  net_fuel_consumption_liters: float
+  auxiliary_power_consumption: float
+  delay_flag: bool
+  delay_type: 
+    type: string
+    format: "WEATHER|TECHNICAL|AIR_TRAFFIC|PASSENGER|CREW|MAINTENANCE|EMERGENCY"
+  delay_duration_minutes: float
+  altitude_feet: float
+  airspeed_knots: float
+  engine_rpm: float
+  power_factor: float
+  thrust_setting: float
+  efficiency_percentage: float
+  ambient_temperature_celsius: float
+  humidity_percent: float
+  weather_conditions: 
+    type: string
+    format: "CLEAR|CLOUDY|RAINY|STORMY|SNOWY|FOGGY|WINDY|HOT|COLD"
+  runway_length_feet: float
+  landing_weight_kg: float
+  revenue_usd: float
+  carbon_emissions_kg: float 

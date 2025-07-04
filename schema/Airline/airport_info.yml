@@ -1,0 +1,54 @@
+table: airport_info
+type: dimension
+num_rows: 100
+data_quality_rules:
+  airport_id:
+    not_null: true
+    description: "Primary key should never be null"
+    action: "fail"
+columns:
+  airport_id: int
+  airport_name: 
+    type: string
+    format: "AIRPORT-####"  # e.g., AIRPORT-0001
+  airport_type: 
+    type: string
+    format: "TYPE-##"  # e.g., TYPE-01
+  airport_location: 
+    type: string
+    format: "LOC-####"  # e.g., LOC-1234
+  address: string
+  city: string
+  state: string
+  country: string
+  postal_code: 
+    type: string
+    format: "ZIP-#####"  # e.g., ZIP-12345
+  latitude: float
+  longitude: float
+  runway_count: int
+  commissioning_date: datetime
+  air_traffic_control_type: 
+    type: string
+    format: "ATC-##"  # e.g., ATC-01
+  primary_fuel_type: 
+    type: string
+    format: "FUEL-##"  # e.g., FUEL-01
+  secondary_fuel_type: 
+    type: string
+    format: "FUEL-##"  # e.g., FUEL-02
+  operational_status: 
+    type: string
+    format: "STATUS-#"  # e.g., STATUS-1
+  airport_manager: 
+    type: string
+    format: "MGR-####"  # e.g., MGR-1234
+  email_address: string
+  phone_number: string
+  emergency_contact: 
+    type: string
+    format: "EMER-####"  # e.g., EMER-1234
+  regulatory_compliance_status: 
+    type: string
+    format: "COMP-##"  # e.g., COMP-01
+  last_inspection_date: datetime 

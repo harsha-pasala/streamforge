@@ -1,0 +1,36 @@
+table: sensor_readings
+type: fact
+num_rows: 100
+data_quality_rules:
+  sensor_value:
+    min_value: 0
+    max_value: 10000  # Generic max value for sensor readings
+    anomaly_percentage: 0.15  # 15% of values will be outside this range
+    description: "Sensor values should be within reasonable operational ranges"
+    action: "WARN"  # WARN, FAIL, or DROP
+  engine_efficiency:
+    min_value: 0.75  # 75% minimum efficiency
+    max_value: 0.98  # 98% maximum efficiency
+    anomaly_percentage: 0.15
+    description: "Engine efficiency should be between 75% and 98% for normal operation"
+    action: "WARN"
+columns:
+  reading_id: int
+  sensor_id: int
+  aircraft_id: int
+  flight_id: int
+  timestamp: datetime
+  sensor_value: float
+  engine_efficiency: float
+  emissions_kg: float
+  flight_phase: 
+    type: string
+    format: "TAXING|TAKEOFF|CLIMB|CRUISE|DESCENT|LANDING"
+  altitude_feet: float
+  airspeed_knots: float
+  engine_temperature_celsius: float
+  oil_pressure_psi: float
+  vibration_level: float
+  ambient_temperature_celsius: float
+  humidity_percent: float
+  fuel_consumption_liters: float 

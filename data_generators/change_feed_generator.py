@@ -30,9 +30,12 @@ class ChangeFeedGenerator(BaseGenerator):
             
         # Special handling for datetime in change feeds
         if dtype == 'datetime':
+            # Convert string dates to datetime objects for Faker
+            start_date = datetime.strptime(self.rules['time_range']['start_date'], '%Y-%m-%d')
+            end_date = datetime.strptime(self.rules['time_range']['end_date'], '%Y-%m-%d')
             return self.fake.date_time_between(
-                start_date=self.rules['time_range']['start_date'],
-                end_date=self.rules['time_range']['end_date']
+                start_date=start_date,
+                end_date=end_date
             ).isoformat()
             
         # Use base implementation for all other types
