@@ -212,6 +212,8 @@ class BaseGenerator(ABC):
                 else:
                     # Simple catch-all: return format as-is
                     return format_spec
+            elif 'manufacturer' in col_lower or 'company' in col_lower:
+                return self.fake.company()
             elif 'name' in col_lower:
                 return self.fake.name()
             elif 'email' in col_lower:

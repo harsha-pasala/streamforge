@@ -1,0 +1,29 @@
+table: production_equipment
+type: dimension
+num_rows: 500
+data_quality_rules:
+  equipment_id:
+    not_null: true
+    description: "Primary key should never be null"
+    action: "fail"
+columns:
+  equipment_id: int
+  equipment_name: 
+    type: string
+    format: "e######"
+  equipment_type: 
+    type: string
+    format: "ROBOT_ARM|CONVEYOR_BELT|PACKAGING_MACHINE|MIXER|OVEN|FREEZER|SLICER|EXTRUDER|FILLING_MACHINE|SEALING_MACHINE"  # Types of food production equipment
+  manufacturer: string
+  model_number: 
+    type: string
+    format: "MOD-####-##"  # e.g., MOD-2023-01
+  installation_date: datetime
+  rated_capacity_units_per_hour: float
+  status: 
+    type: string
+    format: "OPERATIONAL|MAINTENANCE|OFFLINE|DECOMMISSIONED|TESTING"  # Equipment status
+  maintenance_contact: 
+    type: string
+    format: "CONT-####"  # e.g., CONT-1234
+  facility_id: int 

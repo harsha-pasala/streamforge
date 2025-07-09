@@ -1,0 +1,32 @@
+table: quality_control
+type: fact
+num_rows: 100
+data_quality_rules:
+  quality_score:
+    min_value: 0.50  # 50% minimum quality score
+    max_value: 1.00  # 100% maximum quality score
+    anomaly_percentage: 0.15  # 15% of values will be outside this range
+    description: "Quality score should be between 50% and 100% for normal operation"
+    action: "WARN"  # WARN, FAIL, or DROP
+  temperature_celsius:
+    min_value: -20
+    max_value: 120
+    anomaly_percentage: 0.15
+    description: "Temperature should be between -20 and 120 degrees Celsius"
+    action: "DROP"
+columns:
+  quality_id: int
+  facility_id: int
+  equipment_id: int
+  timestamp: datetime
+  batch_id: 
+    type: string
+    format: "BATCH-####-####"  # e.g., BATCH-2023-0001
+  quality_score: float
+  contamination_level: float
+  moisture_content: float
+  texture_rating: float
+  color_consistency: float
+  weight_variance: float
+  temperature_celsius: float
+  humidity: float 

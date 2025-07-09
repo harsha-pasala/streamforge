@@ -1,0 +1,39 @@
+table: facility_info
+type: dimension
+num_rows: 100
+data_quality_rules:
+  facility_id:
+    not_null: true
+    description: "Primary key should never be null"
+    action: "fail"
+columns:
+  facility_id: int
+  facility_name: 
+    type: string
+    format: "PLANT-####"  # e.g., PLANT-0001
+  facility_type: 
+    type: string
+    format: "TYPE-##"  # e.g., TYPE-01
+  facility_location: 
+    type: string
+    format: "LOC-####"  # e.g., LOC-1234
+  address: string
+  city: string
+  state: string
+  country: string
+  postal_code: 
+    type: string
+    format: "ZIP-#####"  # e.g., ZIP-12345
+  commissioning_date: datetime
+  operational_status: 
+    type: string
+    format: "STATUS-#"  # e.g., STATUS-1
+  email_address: string
+  phone_number: string
+  emergency_contact: 
+    type: string
+    format: "EMER-####"  # e.g., EMER-1234
+  regulatory_compliance_status: 
+    type: string
+    format: "COMP-##"  # e.g., COMP-01
+  last_inspection_date: datetime 

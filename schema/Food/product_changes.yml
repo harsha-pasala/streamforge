@@ -1,0 +1,53 @@
+table: product_changes
+type: change_feed
+num_rows: 100
+change_feed_rules:
+  # Distribution of operations for each product_id
+  operation_distribution:
+    INSERT: 1      # Each product gets exactly 1 INSERT
+    UPDATE: 3      # Each product gets 0-3 UPDATEs
+    DELETE: 0.2    # 20% of products get a DELETE
+  # Fields that can be updated in UPDATE operations
+  updatable_fields:
+    - product_name
+    - recipe_version
+    - packaging_type
+    - shelf_life_days
+  # Time range for generating changes
+  time_range:
+    start_date: "2023-01-01"  # Start date for generating changes
+    end_date: "2024-03-15"    # End date for generating changes
+  # Minimum and maximum time between changes (in days)
+  time_between_changes:
+    min: 1
+    max: 90
+  # Fields that become null in DELETE operations
+  delete_null_fields:
+    - product_name
+    - recipe_version
+    - packaging_type
+    - shelf_life_days
+  # DLT specific configurations
+  dlt_config:
+    keys: ["product_id"]  # Primary key for change tracking
+    sequence_by: "change_timestamp"  # Field to sequence changes by
+columns:
+  product_id: int
+  product_name: string
+  recipe_id: 
+    type: string
+    format: "REC-####-####"  # e.g., REC-1234-5678
+  recipe_version: 
+    type: string
+    format: "V##.##"  # e.g., V01.03
+  packaging_type: 
+    type: string
+    format: "PKG-####"  # e.g., PKG-1234
+  product_category: 
+    type: string
+    format: "FROZEN|FRESH|CANNED|DRIED|BAKED"  # Product categories
+  shelf_life_days: int
+  operation: 
+    type: string
+    format: "INSERT|UPDATE|DELETE"
+  change_timestamp: datetime 
