@@ -256,6 +256,12 @@ def generate_dlt_references(schema, output_path, table_type):
         dlt_config = schema.get("change_feed_rules", {}).get("dlt_config", {})
         keys = dlt_config.get("keys", ["key"])  # Default to ["key"] if not specified
         sequence_by = dlt_config.get("sequence_by", "change_timestamp")  # Default to change_timestamp if not specified
+        except_columns = dlt_config.get("except_columns", None)  # Optional except_columns
+        
+        # Build the COLUMNS clause for SQL
+        columns_clause = ""
+        if except_columns:
+            columns_clause = f"\nCOLUMNS * EXCEPT ({', '.join(except_columns)})"
         
         # SQL DLT code for change feed - using full catalog.schema format for change feeds
         sql_code = f'''
@@ -272,9 +278,14 @@ COMMENT '{get_table_comment("Silver", table_name, "change feed")}';
 APPLY CHANGES INTO silver.{table_name}
 FROM STREAM(bronze.{table_name})
 KEYS ({', '.join(keys)})
-SEQUENCE BY {sequence_by}
+SEQUENCE BY {sequence_by}{columns_clause}
 STORED AS SCD TYPE {2 if status["selected_dlt_mode"] == "full_code" else "<CHANGE_HERE: 1/2>"};
 '''
+        
+        # Build the except_column_list parameter for Python
+        except_columns_param = ""
+        if except_columns:
+            except_columns_param = f',\n    except_column_list={except_columns}'
         
         # Python DLT code for change feed - using full catalog.schema format for change feeds
         python_code = f'''@dlt.table(name="bronze.{table_name}")
@@ -297,7 +308,7 @@ dlt.apply_changes(
     source="bronze.{table_name}",
     keys={keys},
     sequence_by="{sequence_by}",
-    stored_as_scd_type="{2 if status["selected_dlt_mode"] == "full_code" else "<CHANGE_HERE: 1/2>"}"
+    stored_as_scd_type="{2 if status["selected_dlt_mode"] == "full_code" else "<CHANGE_HERE: 1/2>"}{except_columns_param}
 )
 '''
     else:  # fact or dimension tables

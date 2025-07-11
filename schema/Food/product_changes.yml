@@ -31,6 +31,7 @@ change_feed_rules:
   dlt_config:
     keys: ["product_id"]  # Primary key for change tracking
     sequence_by: "change_timestamp"  # Field to sequence changes by
+    except_columns: ["operation", "change_timestamp"]
 columns:
   product_id: int
   product_name: string
