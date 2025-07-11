@@ -282,10 +282,13 @@ SEQUENCE BY {sequence_by}{columns_clause}
 STORED AS SCD TYPE {2 if status["selected_dlt_mode"] == "full_code" else "<CHANGE_HERE: 1/2>"};
 '''
         
-        # Build the except_column_list parameter for Python
-        except_columns_param = ""
+        # Build the apply_changes parameters for Python
+        scd_type_value = f'"{2 if status["selected_dlt_mode"] == "full_code" else "<CHANGE_HERE: 1/2>"}"'
+        
+        # Add except_column_list parameter if present
+        extra_params = ""
         if except_columns:
-            except_columns_param = f',\n    except_column_list={except_columns}'
+            extra_params = f',\n    except_column_list={except_columns}'
         
         # Python DLT code for change feed - using full catalog.schema format for change feeds
         python_code = f'''@dlt.table(name="bronze.{table_name}")
@@ -308,7 +311,7 @@ dlt.apply_changes(
     source="bronze.{table_name}",
     keys={keys},
     sequence_by="{sequence_by}",
-    stored_as_scd_type="{2 if status["selected_dlt_mode"] == "full_code" else "<CHANGE_HERE: 1/2>"}{except_columns_param}
+    stored_as_scd_type={scd_type_value}{extra_params}
 )
 '''
     else:  # fact or dimension tables
