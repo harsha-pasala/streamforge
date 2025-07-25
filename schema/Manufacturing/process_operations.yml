@@ -1,0 +1,126 @@
+table: process_operations
+type: fact
+num_rows: 100
+data_quality_rules:
+  net_energy_consumption_kwh:
+    min_value: 0
+    max_value: 50000
+    anomaly_percentage: 0.15
+    description: "Net energy consumption should be between 0 and 50,000 kWh"
+    action: "WARN"
+  utility_consumption:
+    min_value: 0
+    max_value: 100000
+    anomaly_percentage: 0.20
+    description: "Utility consumption should be positive and within reasonable operational limits"
+    action: "WARN"
+  alarm_duration_minutes:
+    min_value: 0
+    max_value: 1440  # 24 hours max
+    anomaly_percentage: 0.10
+    description: "Alarm duration should be between 0 and 1440 minutes (24 hours)"
+    action: "WARN"
+  operating_pressure_psi:
+    min_value: 0
+    max_value: 5000  # High pressure industrial systems
+    anomaly_percentage: 0.05
+    description: "Operating pressure should be between 0 and 5000 PSI for safety"
+    action: "DROP"
+  flow_rate_lpm:
+    min_value: 0
+    max_value: 10000  # Liters per minute
+    anomaly_percentage: 0.10
+    description: "Flow rate should be between 0 and 10,000 LPM"
+    action: "DROP"
+  motor_rpm:
+    min_value: 0
+    max_value: 50000  # High-speed industrial motors
+    anomaly_percentage: 0.10
+    description: "Motor RPM should be between 0 and 50,000"
+    action: "DROP"
+  power_factor:
+    min_value: 0.0
+    max_value: 1.0  # Power factor is bounded by physics
+    anomaly_percentage: 0.05
+    description: "Power factor must be between 0.0 and 1.0"
+    action: "DROP"
+  valve_position:
+    min_value: 0.0
+    max_value: 100.0  # Percentage open
+    anomaly_percentage: 0.05
+    description: "Valve position should be between 0% and 100%"
+    action: "DROP"
+  efficiency_percentage:
+    min_value: 0.0
+    max_value: 100.0  # Efficiency cannot exceed 100%
+    anomaly_percentage: 0.15
+    description: "Efficiency should be between 0% and 100%"
+    action: "DROP"
+  ambient_temperature_celsius:
+    min_value: -50.0
+    max_value: 80.0  # Industrial environment range
+    anomaly_percentage: 0.10
+    description: "Ambient temperature should be between -50°C and 80°C"
+    action: "DROP"
+  humidity_percent:
+    min_value: 0.0
+    max_value: 100.0  # Relative humidity percentage
+    anomaly_percentage: 0.10
+    description: "Humidity should be between 0% and 100%"
+    action: "DROP"
+  equipment_capacity_percent:
+    min_value: 0.0
+    max_value: 120.0  # Allow some overcapacity
+    anomaly_percentage: 0.15
+    description: "Equipment capacity should be between 0% and 120%"
+    action: "DROP"
+  output_weight_kg:
+    min_value: 0
+    max_value: 100000  # 100 metric tons
+    anomaly_percentage: 0.20
+    description: "Output weight should be positive and reasonable"
+    action: "WARN"
+  revenue_usd:
+    min_value: 0
+    max_value: 1000000  # $1M per operation
+    anomaly_percentage: 0.25
+    description: "Revenue should be positive and within business expectations"
+    action: "WARN"
+  carbon_emissions_kg:
+    min_value: 0
+    max_value: 50000  # 50 metric tons
+    anomaly_percentage: 0.20
+    description: "Carbon emissions should be positive and environmentally reasonable"
+    action: "WARN"
+columns:
+  operation_id: int
+  equipment_id: int
+  operator_id: int
+  timestamp: datetime
+  start_location: string
+  end_location: string
+  batch_number: 
+    type: string
+    format: "BT-####"  # e.g., BT-1234
+  net_energy_consumption_kwh: float
+  utility_consumption: float
+  alarm_flag: bool
+  alarm_type: 
+    type: string
+    format: "TEMPERATURE|PRESSURE|FLOW|LEVEL|VIBRATION|POWER|SAFETY|QUALITY|MAINTENANCE"
+  alarm_duration_minutes: float
+  operating_pressure_psi: float
+  flow_rate_lpm: float
+  motor_rpm: float
+  power_factor: float
+  valve_position: float
+  efficiency_percentage: float
+  ambient_temperature_celsius: float
+  humidity_percent: float
+  operating_conditions: 
+    type: string
+    format: "NORMAL|HIGH_TEMP|HIGH_PRESSURE|LOW_FLOW|MAINTENANCE|STARTUP|SHUTDOWN|EMERGENCY|OPTIMAL"
+  equipment_capacity_percent: float
+  output_weight_kg: float
+  revenue_usd: float
+  carbon_emissions_kg: float 

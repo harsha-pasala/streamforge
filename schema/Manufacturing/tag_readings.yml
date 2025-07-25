@@ -1,0 +1,90 @@
+table: tag_readings
+type: fact
+num_rows: 100
+data_quality_rules:
+  tag_value:
+    min_value: 0
+    max_value: 10000  # Generic max value for tag readings
+    anomaly_percentage: 0.15  # 15% of values will be outside this range
+    description: "Tag values should be within reasonable operational ranges"
+    action: "DROP"  # WARN, FAIL, or DROP
+  equipment_efficiency:
+    min_value: 0.75  # 75% minimum efficiency
+    max_value: 0.98  # 98% maximum efficiency
+    anomaly_percentage: 0.15
+    description: "Equipment efficiency should be between 75% and 98% for normal operation"
+    action: "WARN"
+  emissions_kg:
+    min_value: 0
+    max_value: 10000  # 10 metric tons per reading
+    anomaly_percentage: 0.20
+    description: "Emissions should be positive and environmentally reasonable"
+    action: "WARN"
+  operating_pressure_psi:
+    min_value: 0
+    max_value: 5000  # High pressure industrial systems
+    anomaly_percentage: 0.05
+    description: "Operating pressure should be between 0 and 5000 PSI for safety"
+    action: "DROP"
+  flow_rate_lpm:
+    min_value: 0
+    max_value: 10000  # Liters per minute
+    anomaly_percentage: 0.10
+    description: "Flow rate should be between 0 and 10,000 LPM"
+    action: "DROP"
+  motor_temperature_celsius:
+    min_value: -20.0
+    max_value: 200.0  # Motor operating temperature range
+    anomaly_percentage: 0.10
+    description: "Motor temperature should be between -20°C and 200°C"
+    action: "DROP"
+  hydraulic_pressure_psi:
+    min_value: 0
+    max_value: 10000  # Very high pressure hydraulic systems
+    anomaly_percentage: 0.05
+    description: "Hydraulic pressure should be between 0 and 10,000 PSI for safety"
+    action: "DROP"
+  vibration_level:
+    min_value: 0
+    max_value: 100  # mm/sec vibration level
+    anomaly_percentage: 0.15
+    description: "Vibration level should be between 0 and 100 mm/sec"
+    action: "DROP"
+  ambient_temperature_celsius:
+    min_value: -50.0
+    max_value: 80.0  # Industrial environment range
+    anomaly_percentage: 0.10
+    description: "Ambient temperature should be between -50°C and 80°C"
+    action: "DROP"
+  humidity_percent:
+    min_value: 0.0
+    max_value: 100.0  # Relative humidity percentage
+    anomaly_percentage: 0.10
+    description: "Humidity should be between 0% and 100%"
+    action: "DROP"
+  energy_consumption_kwh:
+    min_value: 0
+    max_value: 50000
+    anomaly_percentage: 0.15
+    description: "Energy consumption should be between 0 and 50,000 kWh"
+    action: "WARN"
+columns:
+  reading_id: int
+  tag_id: int
+  equipment_id: int
+  operation_id: int
+  timestamp: datetime
+  tag_value: float
+  equipment_efficiency: float
+  emissions_kg: float
+  process_phase: 
+    type: string
+    format: "STARTUP|HEATING|REACTION|COOLING|SEPARATION|SHUTDOWN"
+  operating_pressure_psi: float
+  flow_rate_lpm: float
+  motor_temperature_celsius: float
+  hydraulic_pressure_psi: float
+  vibration_level: float
+  ambient_temperature_celsius: float
+  humidity_percent: float
+  energy_consumption_kwh: float 

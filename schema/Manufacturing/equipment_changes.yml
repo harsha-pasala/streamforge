@@ -1,0 +1,75 @@
+table: equipment_changes
+type: change_feed
+num_rows: 100
+change_feed_rules:
+  # Distribution of operations for each equipment_id
+  operation_distribution:
+    INSERT: 1      # Each equipment gets exactly 1 INSERT
+    UPDATE: 3      # Each equipment gets 0-3 UPDATEs
+    DELETE: 0.2    # 20% of equipment gets a DELETE
+  # Fields that can be updated in UPDATE operations
+  updatable_fields:
+    - equipment_name
+    - equipment_type
+    - manufacturer
+    - model_number
+    - maintenance_status
+    - operator_assignment
+    - calibration_date
+    - configuration_version
+    - operational_status
+  # Time range for generating changes
+  time_range:
+    start_date: "2023-01-01"  # Start date for generating changes
+    end_date: "2024-03-15"    # End date for generating changes
+  # Minimum and maximum time between changes (in days)
+  time_between_changes:
+    min: 1
+    max: 90
+  # Fields that become null in DELETE operations
+  delete_null_fields:
+    - equipment_name
+    - equipment_type
+    - manufacturer
+    - model_number
+    - commissioning_date
+    - maintenance_status
+    - operator_assignment
+    - calibration_date
+    - configuration_version
+    - operational_status
+  # DLT specific configurations
+  dlt_config:
+    keys: ["equipment_id"]  # Primary key for change tracking
+    sequence_by: "change_timestamp"  # Field to sequence changes by
+    except_columns: ["operation", "change_timestamp"]
+columns:
+  equipment_id: int
+  equipment_name: 
+    type: string
+    format: "E######"
+  equipment_type: 
+    type: string
+    format: "PUMP_CENTRIFUGAL|PUMP_POSITIVE_DISPLACEMENT|TURBINE_GAS|TURBINE_STEAM|COMPRESSOR_SCREW|COMPRESSOR_CENTRIFUGAL|REACTOR_CSTR|REACTOR_BATCH|HEAT_EXCHANGER|DISTILLATION_COLUMN"
+  manufacturer: 
+    type: string
+    format: "MAN-####"  # e.g., MAN-1234
+  model_number: 
+    type: string
+    format: "MOD-####-##"  # e.g., MOD-2023-01
+  commissioning_date: datetime
+  maintenance_status: 
+    type: string
+    format: "SCHEDULED|IN_PROGRESS|COMPLETED|OVERDUE|CRITICAL|DEFERRED"
+  operator_assignment: string
+  calibration_date: datetime
+  configuration_version: 
+    type: string
+    format: "CONFIG-####-####"  # e.g., CONFIG-1234-5678
+  operational_status: 
+    type: string
+    format: "ACTIVE|INACTIVE|MAINTENANCE|STANDBY"
+  operation: 
+    type: string
+    format: "INSERT|UPDATE|DELETE"
+  change_timestamp: datetime

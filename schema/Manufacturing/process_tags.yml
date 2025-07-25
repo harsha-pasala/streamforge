@@ -1,0 +1,28 @@
+table: process_tags
+type: dimension
+num_rows: 100
+data_quality_rules:
+  tag_id:
+    not_null: true
+    description: "Primary key should never be null"
+    action: "fail"
+columns:
+  tag_id: int
+  tag_name: 
+    type: string
+    format: "TAG-####"  # e.g., TAG-0001
+  tag_type: 
+    type: string
+    format: "TEMPERATURE|PRESSURE|FLOW_RATE|LEVEL|PH|CONDUCTIVITY|VIBRATION|POWER|SPEED|VALVE_POSITION"
+  tag_location: 
+    type: string
+    format: "REACTOR_1|REACTOR_2|DISTILLATION_TOWER|HEAT_EXCHANGER|PUMP_DISCHARGE|COMPRESSOR_INLET|TANK_LEVEL|CONTROL_ROOM"
+  measurement_unit: 
+    type: string
+    format: "CELSIUS|PSI|LPM|PERCENT|PH_UNITS|MICROSIEMENS|MM_PER_SEC|KW|RPM|DEGREES"
+  manufacturer: 
+    type: string
+    format: "MAN-####"  # e.g., MAN-1234
+  model_number: 
+    type: string
+    format: "MOD-####-##"  # e.g., MOD-2023-01 
