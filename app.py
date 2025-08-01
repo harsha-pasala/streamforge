@@ -274,15 +274,15 @@ AS SELECT * FROM STREAM read_files("{output_path}/", format => "csv", inferColum
 CREATE OR REFRESH STREAMING TABLE silver.{table_name}
 COMMENT '{get_table_comment("Silver", table_name, "change feed")}';
 
--- Apply changes using SCD
-APPLY CHANGES INTO silver.{table_name}
+-- AUTO CDC FLOW
+CREATE FLOW auto_cdc_{table_name} AS AUTO CDC INTO silver.{table_name}
 FROM STREAM(bronze.{table_name})
 KEYS ({', '.join(keys)})
 SEQUENCE BY {sequence_by}{columns_clause}
 STORED AS SCD TYPE {2 if status["selected_dlt_mode"] == "full_code" else "<CHANGE_HERE: 1/2>"};
 '''
         
-        # Build the apply_changes parameters for Python
+        # Build the auto_cdc_flow parameters for Python
         scd_type_value = f'"{2 if status["selected_dlt_mode"] == "full_code" else "<CHANGE_HERE: 1/2>"}"'
         
         # Add except_column_list parameter if present
@@ -306,7 +306,7 @@ dlt.create_streaming_table(
     comment="{get_table_comment("Silver", table_name, "change feed")}"
 )
 
-dlt.apply_changes(
+dlt.create_auto_cdc_flow(
     target="silver.{table_name}",
     source="bronze.{table_name}",
     keys={keys},
