@@ -407,7 +407,14 @@ def generate_files_for_industry(industry):
     if current_iteration == 0:
         output_dir = os.path.join(status['output_path'], industry)
         # Create a temporary generator instance to handle directory cleanup
-        is_local = not status['output_path'].startswith('/Volumes/')
+        is_local = not status['output_path'].lower().startswith('/volumes/')
+        
+        # Debug logging for cleanup
+        logger.info(f"DEBUG CLEANUP - Output path: '{status['output_path']}'")
+        logger.info(f"DEBUG CLEANUP - Starts with /volumes/ (case-insensitive): {status['output_path'].lower().startswith('/volumes/')}")
+        logger.info(f"DEBUG CLEANUP - is_local determined as: {is_local}")
+        logger.info(f"DEBUG CLEANUP - output_dir: {output_dir}")
+        
         # Use DimensionGenerator since it's the simplest concrete implementation
         temp_generator = DimensionGenerator(None, status['output_path'], is_local=is_local)
         temp_generator._check_directory_empty(output_dir)
@@ -438,7 +445,12 @@ def generate_files_for_industry(industry):
             logger.info(f"Loading schema from: {schema_path}")
             
             # Determine if we're in a local environment based on the output path
-            is_local = not status['output_path'].startswith('/Volumes/')
+            is_local = not status['output_path'].lower().startswith('/volumes/')
+            
+            # Debug logging
+            logger.info(f"DEBUG - Output path: '{status['output_path']}'")
+            logger.info(f"DEBUG - Starts with /volumes/ (case-insensitive): {status['output_path'].lower().startswith('/volumes/')}")
+            logger.info(f"DEBUG - is_local determined as: {is_local}")
             
             # Select appropriate generator based on table type
             if table_type == "dimension":
@@ -998,6 +1010,11 @@ def control_generation(button_clicks, n_intervals, selected_language, selected_i
                     dimension_key_ranges = {}
                     status["running"] = True
                     status["industry"] = selected_industry
+                    
+                    # Debug logging for path setting
+                    logger.info(f"DEBUG START - path_input received: '{path_input}'")
+                    logger.info(f"DEBUG START - status['output_path'] set to: '{status['output_path']}'")
+                    logger.info(f"DEBUG START - path starts with /volumes/ (case-insensitive): {status['output_path'].lower().startswith('/volumes/')}")
                 
                 # Start the generation thread
                 start_generation_thread()

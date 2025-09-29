@@ -13,6 +13,14 @@ class BaseGenerator(ABC):
         self.schema_path = schema_path
         self.output_base_path = output_base_path.strip()
         self._is_local = is_local
+        
+        # Debug logging
+        logger.info(f"DEBUG - BaseGenerator initialized with:")
+        logger.info(f"DEBUG - schema_path: {schema_path}")
+        logger.info(f"DEBUG - output_base_path: '{output_base_path}'")
+        logger.info(f"DEBUG - is_local parameter: {is_local}")
+        logger.info(f"DEBUG - self._is_local set to: {self._is_local}")
+        
         self.schema = self._load_schema()
         
     def _is_local_env(self):
@@ -44,7 +52,7 @@ class BaseGenerator(ABC):
             return os.path.join(table_dir, f"data_{timestamp}.csv")
         else:
             # Databricks environment: ensure path starts with /Volumes/
-            if not self.output_base_path.startswith('/Volumes/'):
+            if not self.output_base_path.lower().startswith('/volumes/'):
                 logger.warning("Databricks path should start with /Volumes/. Adding prefix.")
                 self.output_base_path = f"/Volumes/{self.output_base_path.lstrip('/')}"
             
